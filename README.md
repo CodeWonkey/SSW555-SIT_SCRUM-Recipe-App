@@ -4,7 +4,13 @@ A team-owned starter for the recipe journal project. It includes a runnable Flas
 
 ## Team members
 
-- [Add team member names and GitHub usernames]
+- Ayden Malahoff-Kamei
+- Vikram Prashant Gajendragadkar
+- Daniel Oppenheimer
+- Jocelyn Mo
+- Jamie Weirick
+- Turan Islamli
+
 
 ## Sprint 1
 
