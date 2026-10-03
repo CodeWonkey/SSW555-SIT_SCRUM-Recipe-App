@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Recipe Journal{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="{{ url_for('main.home') }}">Recipe Journal</a>
+    <nav aria-label="Main navigation"><a href="{{ url_for('main.home') }}">My recipes</a></nav>
+  </header>
+  <main class="page-shell">{% block content %}{% endblock %}</main>
+  <footer class="site-footer">CS555 team starter · Sample content only</footer>
+</body>
+</html>
