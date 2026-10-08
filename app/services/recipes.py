@@ -22,6 +22,7 @@ class Recipe:
     favorite: bool = False
     rating: int | None = None
     notes: str = ""
+    source_link: str = ""
 
 
 class RecipeNotFound(KeyError):

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.title }} · Recipe Journal{% endblock %}
+
+{% block content %}
+  <section class="intro">
+    <p class="eyebrow">RECIPE DETAILS</p>
+    <h1>{{ recipe.title }}</h1>
+
+    <p>
+      {{ recipe.servings }} servings
+      {% if recipe.rating is not none %}
+        · Rating: {{ recipe.rating }}/5
+      {% endif %}
+    </p>
+
+    {% if recipe.tags %}
+      <p class="eyebrow">{{ recipe.tags|join(" · ") }}</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Ingredients</h2>
+    <ul>
+      {% for ingredient in recipe.ingredients %}
+        <li>
+          {{ ingredient.quantity }} {{ ingredient.unit }} {{ ingredient.name }}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section>
+    <h2>Steps</h2>
+    <ol>
+      {% for step in recipe.steps %}
+        <li>{{ step }}</li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  {% if recipe.source_link %}
+    <section>
+      <h2>Source</h2>
+      <a href="{{ recipe.source_link }}">{{ recipe.source_link }}</a>
+    </section>
+  {% endif %}
+
+  <p>
+    <a href="{{ url_for('main.home') }}">Back to recipes</a>
+  </p>
+{% endblock %}
