@@ -1,0 +1,18 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+
+# Build / Egg metadata
+*.egg-info/
+dist/
+build/
+
+# Pytest / Coverage caches
+.pytest_cache/
+.coverage
+htmlcov/

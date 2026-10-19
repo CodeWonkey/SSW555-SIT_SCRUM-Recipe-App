@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 try:
     from flask import Flask
 except ModuleNotFoundError:  # Domain tests can run before web dependencies are installed.
@@ -14,6 +16,7 @@ def create_app(service: RecipeService | None = None):
     from app.routes import create_blueprint
 
     app = Flask(__name__)
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-me")
     app.config["RECIPE_SERVICE"] = service or RecipeService()
     app.register_blueprint(create_blueprint(app.config["RECIPE_SERVICE"]))
     return app
