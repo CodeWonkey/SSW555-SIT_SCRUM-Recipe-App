@@ -9,7 +9,7 @@ def create_blueprint(service: RecipeService) -> Blueprint:
 
     @bp.get("/")
     def home():
-    return render_template("index.html", recipes=service.list_recipes())
+        return render_template("index.html", recipes=service.list_recipes())
 
 
     @bp.get("/recipes/<recipe_id>")
@@ -19,7 +19,7 @@ def create_blueprint(service: RecipeService) -> Blueprint:
         except RecipeNotFound:
             abort(404)
            
-    return render_template("recipe_detail.html", recipe=recipe)
+        return render_template("recipe_detail.html", recipe=recipe)
 
     @bp.route("/recipes/add", methods=["GET", "POST"])
     def add_recipe():
