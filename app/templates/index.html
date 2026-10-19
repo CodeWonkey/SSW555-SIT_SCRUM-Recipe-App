@@ -9,8 +9,12 @@
   </section>
   <section id="recipe-list" class="section-heading">
     <div><p class="eyebrow">RECIPE COLLECTION</p><h2>My recipes</h2></div>
-    <button class="button button-secondary" type="button" disabled title="Add recipe is a team story to implement">Add recipe · coming soon</button>
+    <a class="button" href="{{ url_for('main.add_recipe') }}">Add recipe</a>
   </section>
+  <nav aria-label="Main navigation">
+    <a href="{{ url_for('main.home') }}">My recipes</a>
+    <a href="{{ url_for('main.add_recipe') }}">Add recipe</a>
+  </nav>
   {% if recipes %}
     <div class="recipe-grid">
       {% for recipe in recipes %}
