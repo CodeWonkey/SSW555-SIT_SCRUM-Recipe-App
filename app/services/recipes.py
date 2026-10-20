@@ -79,8 +79,8 @@ class RecipeService:
         return [r for r in self._recipes.values()
                 if needle in r.title.casefold()
                 or any(needle in item.name.casefold() for item in r.ingredients)
-                or any(needle in step.casefold() for step in r.steps)]
-            
+                or any(needle in step.casefold() for step in r.steps)
+                or any(needle in tag.casefold() for tag in r.tags)]
 
     def filter(self, *, tag: str | None = None, favorites_only: bool = False) -> list[Recipe]:
         return [r for r in self._recipes.values()
