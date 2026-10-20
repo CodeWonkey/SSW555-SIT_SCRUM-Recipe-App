@@ -9,7 +9,14 @@
 <body>
   <header class="site-header">
     <a class="brand" href="{{ url_for('main.home') }}">Recipe Journal</a>
-    <nav aria-label="Main navigation"><a href="{{ url_for('main.home') }}">My recipes</a></nav>
+    <nav aria-label="Main navigation">
+      <a href="{{ url_for('main.home') }}">My recipes</a>
+      {% if session.get("user_name") %}
+        <span class="signed-in">{{ session.user_name }}</span>
+      {% else %}
+        <a href="{{ url_for('main.register') }}">Create account</a>
+      {% endif %}
+    </nav>
   </header>
   <main class="page-shell">{% block content %}{% endblock %}</main>
   <footer class="site-footer">CS555 team starter · Sample content only</footer>

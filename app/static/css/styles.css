@@ -16,7 +16,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); line-height: 1.55
 a { color: inherit; }
 .site-header { min-height: 68px; padding: 0 clamp(20px, 6vw, 88px); display: flex; align-items: center; justify-content: space-between; background: var(--surface); border-bottom: 1px solid var(--line); }
 .brand { color: var(--green-dark); font-family: Georgia, serif; font-size: 1.35rem; font-weight: 700; text-decoration: none; }
-nav a { color: var(--muted); font-size: .95rem; text-decoration: none; }
+nav { display: flex; gap: 16px; align-items: center; }
+nav a, .signed-in { color: var(--muted); font-size: .95rem; text-decoration: none; }
 .page-shell { width: min(100% - 40px, 1040px); margin: 0 auto; }
 .intro { max-width: 680px; padding: clamp(60px, 10vw, 112px) 0 64px; }
 .eyebrow { margin: 0 0 9px; color: var(--green); font-size: .72rem; font-weight: 750; letter-spacing: .12em; }
@@ -34,8 +35,26 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
 .recipe-card p:last-child, .empty-state p { margin-bottom: 0; color: var(--muted); }
 .empty-state { background: var(--mint); }
 .site-footer { margin-top: 88px; padding: 22px 20px; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: .85rem; }
+.button-outline { border: 1px solid var(--green); background: transparent; color: var(--green); }
+.button-outline:hover { background: var(--mint); color: var(--green-dark); }
+
+.recipe-form, .account-form { max-width: 680px; display: grid; gap: 22px; padding-bottom: 24px; }
+.form-field { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; }
+.form-field label, .form-field legend { padding: 0; font-weight: 650; }
+.recipe-form input, .recipe-form textarea, .account-form input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
+.recipe-form textarea { resize: vertical; }
+.recipe-form input::placeholder, .recipe-form textarea::placeholder, .account-form input::placeholder { color: var(--muted); }
+.recipe-form input:focus-visible, .recipe-form textarea:focus-visible, .account-form input:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.field-hint { margin: 0; color: var(--muted); font-size: .9rem; }
+.form-error { margin: 0 0 16px; color: #8a2f2f; font-weight: 650; }
+
+.ingredient-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; }
+.form-field > .button-outline { justify-self: start; }
+.form-actions { display: flex; gap: 12px; }
 
 @media (max-width: 600px) {
   .section-heading { align-items: start; flex-direction: column; }
   .intro { padding-top: 58px; }
+  .ingredient-row { grid-template-columns: 1fr 1fr; }
+  .ingredient-row input:first-child { grid-column: 1 / -1; }
 }
