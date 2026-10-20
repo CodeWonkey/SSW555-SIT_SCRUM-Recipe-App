@@ -52,6 +52,10 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
 .form-field > .button-outline { justify-self: start; }
 .form-actions { display: flex; gap: 12px; }
 
+.search-form { max-width: none; display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 20px; }
+.search-form .form-field { flex: 1 1 280px; min-width: 0; }
+.search-form .form-actions { flex-wrap: wrap; }
+
 @media (max-width: 600px) {
   .section-heading { align-items: start; flex-direction: column; }
   .intro { padding-top: 58px; }
