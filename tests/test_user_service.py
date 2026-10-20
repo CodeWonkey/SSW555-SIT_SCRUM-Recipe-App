@@ -35,6 +35,15 @@ class UserServiceTests(unittest.TestCase):
                     self.users.register(**fields)
         self.assertIsNone(self.users.get_by_email("john@example.com"))
 
+    def test_authenticate_accepts_correct_credentials_ignoring_email_case(self):
+        user = self.users.register(name="John", email="john@example.com", password="johnny-123")
+        self.assertIs(self.users.authenticate("John@Example.com", "johnny-123"), user)
+
+    def test_authenticate_rejects_wrong_password_and_unknown_email(self):
+        self.users.register(name="John", email="john@example.com", password="johnny-123")
+        self.assertIsNone(self.users.authenticate("john@example.com", "wrong-password"))
+        self.assertIsNone(self.users.authenticate("nobody@example.com", "johnny-123"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -43,6 +43,28 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         session["user_name"] = user.name
         return redirect(url_for("main.home"))
 
+    @bp.route("/login", methods=["GET", "POST"])
+    def login():
+        if request.method == "GET":
+            return render_template("login.html")
+
+        email = request.form.get("email", "")
+        user = users.authenticate(email, request.form.get("password", ""))
+        if user is None:
+            return render_template(
+                "login.html",
+                error="Invalid email or password",
+                email=email,
+            ), 401
+
+        session["user_id"] = user.id
+        session["user_name"] = user.name
+        return redirect(url_for("main.home"))
+
+    @bp.post("/logout")
+    def logout():
+        session.clear()
+        return redirect(url_for("main.home"))
 
     @bp.get("/recipes/<recipe_id>")
     def recipe_detail(recipe_id: str):

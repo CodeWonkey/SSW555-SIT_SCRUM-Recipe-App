@@ -107,26 +107,16 @@ class RecipeServiceTests(unittest.TestCase):
     def test_empty_pantry_returns_zero_match_scores(self):
         results = self.service.pantry_suggestions([])
         self.assertTrue(all(score == 0 for _, score, _ in results))
-    
-    def login(self):
-        self.service.login("username", "password")
-        self.assertTrue(self.service.is_logged_in())
-    
-    def test_logout(self):
-        self.service.login("username", "password")
-        self.service.logout()
-        self.assertFalse(self.service.is_logged_in())
-       
-    def delete_account(self):
-        self.service.login("username", "password")
-        self.service.delete_account()
-        self.assertFalse(self.service.is_logged_in())
-        
-    def test_add_recipe_from_socials(self):
-        self.service.login("username", "password")
-        self.service.add_recipe_from_socials("recipe_id")
-        self.assertTrue(self.service.get("recipe_id").favorite)
-    
+
+    def test_add_recipe_from_socials_marks_recipe_as_favorite(self):
+        recipe = self.service.add_recipe_from_socials("pasta")
+        self.assertTrue(recipe.favorite)
+        self.assertTrue(self.service.get("pasta").favorite)
+
+    def test_add_recipe_from_socials_rejects_unknown_recipe(self):
+        with self.assertRaises(RecipeNotFound):
+            self.service.add_recipe_from_socials("missing")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -58,3 +58,8 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
   .ingredient-row { grid-template-columns: 1fr 1fr; }
   .ingredient-row input:first-child { grid-column: 1 / -1; }
 }
+
+.logout-form {
+  display: inline;
+  margin: 0;
+}

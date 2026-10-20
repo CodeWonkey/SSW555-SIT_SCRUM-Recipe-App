@@ -57,6 +57,12 @@ class UserService:
     def get_by_email(self, email: str) -> User | None:
         return self._by_email.get(email.strip().casefold())
 
+    def authenticate(self, email: str, password: str) -> User | None:
+        user = self.get_by_email(email)
+        if user is not None and self.password_matches(user, password):
+            return user
+        return None
+
     def password_matches(self, user: User, password: str) -> bool:
         return check_password_hash(user.password_hash, password)
 
