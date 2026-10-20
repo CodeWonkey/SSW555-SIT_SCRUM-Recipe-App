@@ -20,10 +20,14 @@
       {% for recipe in recipes %}
         <article class="recipe-card">
           <p class="eyebrow">{{ recipe.tags|join(" · ") or "RECIPE" }}</p>
-          <h3>{{ recipe.title }}</h3>
-          <p>{{ recipe.ingredients|length }} ingredients · {{ recipe.servings }} servings</p>
-        </article>
-      {% endfor %}
+          <h3>
+            <a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">
+              {{ recipe.title }}
+            </a>
+          </h3>
+            <p>{{ recipe.ingredients|length }} ingredients · {{ recipe.servings }} servings</p>
+          </article>
+        {% endfor %}
     </div>
   {% else %}
     <div class="empty-state">

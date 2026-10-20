@@ -1,6 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from app.services.recipes import RecipeService, Recipe, Ingredient
 import uuid
+
+from flask import Blueprint, abort, render_template, request, redirect, url_for, flash
+from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient
 
 
 def create_blueprint(service: RecipeService) -> Blueprint:
@@ -9,6 +10,16 @@ def create_blueprint(service: RecipeService) -> Blueprint:
     @bp.get("/")
     def home():
         return render_template("index.html", recipes=service.list_recipes())
+
+
+    @bp.get("/recipes/<recipe_id>")
+    def recipe_detail(recipe_id: str):
+        try:
+            recipe = service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+           
+        return render_template("recipe_detail.html", recipe=recipe)
 
     @bp.route("/recipes/add", methods=["GET", "POST"])
     def add_recipe():
