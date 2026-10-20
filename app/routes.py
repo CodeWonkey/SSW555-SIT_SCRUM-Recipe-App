@@ -1,15 +1,47 @@
 import uuid
 
-from flask import Blueprint, abort, render_template, request, redirect, url_for, flash
+from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
 from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient
+from app.services.users import UserService
 
 
-def create_blueprint(service: RecipeService) -> Blueprint:
+def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
     bp = Blueprint("main", __name__)
 
     @bp.get("/")
     def home():
         return render_template("index.html", recipes=service.list_recipes())
+
+    @bp.route("/register", methods=["GET", "POST"])
+    def register():
+        if request.method == "GET":
+            return render_template("register.html")
+
+        name = request.form.get("name", "")
+        email = request.form.get("email", "")
+        password = request.form.get("password", "")
+        confirmation = request.form.get("password_confirm", "")
+        if password != confirmation:
+            return render_template(
+                "register.html",
+                error="Passwords do not match",
+                name=name,
+                email=email,
+            ), 400
+
+        try:
+            user = users.register(name=name, email=email, password=password)
+        except ValueError as exc:
+            return render_template(
+                "register.html",
+                error=str(exc),
+                name=name,
+                email=email,
+            ), 400
+
+        session["user_id"] = user.id
+        session["user_name"] = user.name
+        return redirect(url_for("main.home"))
 
 
     @bp.get("/recipes/<recipe_id>")
