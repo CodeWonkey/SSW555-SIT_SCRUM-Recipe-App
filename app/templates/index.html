@@ -13,9 +13,10 @@
   </section>
   <nav aria-label="Main navigation">
     <a href="{{ url_for('main.home') }}">My recipes</a>
+    <a href="#search-recipes">Search recipes</a>
     <a href="{{ url_for('main.add_recipe') }}">Add recipe</a>
   </nav>
-  <form method="GET" action="{{ url_for('main.home') }}" class="recipe-form" role="search">
+  <form id="search-recipes" method="GET" action="{{ url_for('main.home') }}" class="recipe-form search-form" role="search">
     <div class="form-field">
       <label for="recipe-search">Search by recipe name or ingredient</label>
       <input type="search" id="recipe-search" name="q" value="{{ query }}" placeholder="e.g. pasta or tomatoes">
@@ -27,6 +28,9 @@
       {% endif %}
     </div>
   </form>
+  {% if query %}
+    <p role="status">{{ recipes|length }} recipe{{ 's' if recipes|length != 1 else '' }} found for “{{ query }}”.</p>
+  {% endif %}
   {% if recipes %}
     <div class="recipe-grid">
       {% for recipe in recipes %}

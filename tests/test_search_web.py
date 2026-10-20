@@ -49,6 +49,15 @@ class SearchWebTests(unittest.TestCase):
         self.assertNotIn(b'class="recipe-card"', response.data)
         self.assertNotIn(b"Your recipe box is ready", response.data)
 
+    def test_search_displays_result_count_and_clear_link(self):
+        for query, count in (("pasta", "1 recipe found"), ("tomato", "2 recipes found"),
+                             ("chocolate", "0 recipes found")):
+            with self.subTest(query=query):
+                response = self.client.get("/", query_string={"q": query})
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(count.encode(), response.data)
+                self.assertIn(b'href="/">Clear search</a>', response.data)
+
     def test_blank_query_and_cleared_search_show_all_recipes(self):
         self.client.get("/", query_string={"q": "pasta"})
         for query_string in ({}, {"q": ""}, {"q": "   "}):
