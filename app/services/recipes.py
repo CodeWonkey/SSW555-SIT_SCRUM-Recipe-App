@@ -20,6 +20,7 @@ class Recipe:
     servings: int = 1
     tags: set[str] = field(default_factory=set)
     favorite: bool = False
+    cook_later: bool = False
     rating: int | None = None
     notes: str = ""
 
@@ -88,6 +89,14 @@ class RecipeService:
         recipe = self.get(recipe_id)
         recipe.favorite = favorite
         return recipe
+
+    def set_cook_later(self, recipe_id: str, cook_later: bool = True) -> Recipe:
+        recipe = self.get(recipe_id)
+        recipe.cook_later = cook_later
+        return recipe
+
+    def cook_later_list(self) -> list[Recipe]:
+        return [r for r in self._recipes.values() if r.cook_later]
 
     def rate(self, recipe_id: str, stars: int) -> Recipe:
         if not 1 <= stars <= 5:
