@@ -10,7 +10,8 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
     @bp.get("/")
     def home():
-        return render_template("index.html", recipes=service.list_recipes())
+        query = request.args.get("q", "").strip()
+        return render_template("index.html", recipes=service.search(query), query=query)
 
     @bp.route("/register", methods=["GET", "POST"])
     def register():
