@@ -129,3 +129,8 @@ class RecipeService:
                        if ingredient.name.strip().casefold() not in pantry]
             ranked.append((recipe, score, missing))
         return sorted(ranked, key=lambda row: (-row[1], row[0].title.casefold()))
+    
+    def add_recipe_from_socials(self, recipe_id: str) -> Recipe:
+        recipe = self.get(recipe_id)
+        recipe.favorite = True
+        return recipe
