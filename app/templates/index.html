@@ -15,6 +15,18 @@
     <a href="{{ url_for('main.home') }}">My recipes</a>
     <a href="{{ url_for('main.add_recipe') }}">Add recipe</a>
   </nav>
+  <form method="GET" action="{{ url_for('main.home') }}" class="recipe-form" role="search">
+    <div class="form-field">
+      <label for="recipe-search">Search by recipe name or ingredient</label>
+      <input type="search" id="recipe-search" name="q" value="{{ query }}" placeholder="e.g. pasta or tomatoes">
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="button">Search</button>
+      {% if query %}
+        <a class="button button-outline" href="{{ url_for('main.home') }}">Clear search</a>
+      {% endif %}
+    </div>
+  </form>
   {% if recipes %}
     <div class="recipe-grid">
       {% for recipe in recipes %}
@@ -31,8 +43,13 @@
     </div>
   {% else %}
     <div class="empty-state">
+      {% if query %}
+      <h3>No recipes found.</h3>
+      <p>No recipes match “{{ query }}”. Try another recipe name or ingredient.</p>
+      {% else %}
       <h3>Your recipe box is ready.</h3>
       <p>The first story to build is adding a recipe. This page is starter UI for the team to extend.</p>
+      {% endif %}
     </div>
   {% endif %}
 {% endblock %}
