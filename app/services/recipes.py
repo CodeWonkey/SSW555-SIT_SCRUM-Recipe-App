@@ -146,3 +146,4 @@ class RecipeService:
         recipe = self.get(recipe_id)
         recipe.favorite = True
         return recipe
+    

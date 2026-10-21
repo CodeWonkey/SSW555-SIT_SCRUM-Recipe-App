@@ -129,3 +129,6 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         return render_template("add_recipe.html")
 
     return bp
+def edit_recipe():
+    # Placeholder for edit recipe functionality
+    pass
