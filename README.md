@@ -1,5 +1,6 @@
 # CS555 Recipe Journal
 [![Tests](https://github.com/CodeWonkey/SSW555-SIT_SCRUM-Recipe-App/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/CodeWonkey/SSW555-SIT_SCRUM-Recipe-App/actions/workflows/tests.yml)
+
 A team-owned starter for the recipe journal project. It includes a runnable Flask page, a recipe service, CSS, a story-to-test planning matrix, and a notebook. The current service keeps data in memory; it is intended for prototyping and tests, not persistent storage. This scaffold was built for this project; the course example repository was not copied.
 
 ## Team members
