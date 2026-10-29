@@ -83,6 +83,7 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             servings_str = request.form.get("servings", "1")
             steps_raw = request.form.get("steps", "")
             tags_raw = request.form.get("tags", "")
+            source_link = request.form.get("source_link", "").strip()
             
             # Parse servings safely
             try:
@@ -110,14 +111,14 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                         q_val = 1.0
                     ingredients.append(Ingredient(name=name.strip(), quantity=q_val, unit=unit.strip()))
 
-            # Build the Recipe object with a unique short ID
             new_recipe = Recipe(
                 id=str(uuid.uuid4())[:8],
                 title=title,
                 ingredients=ingredients,
                 steps=steps,
                 servings=servings,
-                tags=tags
+                tags=tags,
+                source_link=source_link
             )
 
             try:
