@@ -85,5 +85,49 @@ class AddRecipeWebTests(unittest.TestCase):
         self.assertIn(self.add_url.encode(), response.data)
 
 
+    def test_add_page_has_source_link_field(self):
+        response = self.client.get(self.add_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'name="source_link"', response.data)
+        self.assertIn(b'type="url"', response.data)
+
+    def test_social_media_link_is_saved_with_recipe(self):
+        source_url = "https://www.instagram.com/reel/example123/"
+        response = self.client.post(
+            self.add_url,
+            data=form_data(source_link=source_url)
+        )
+
+        self.assertEqual(response.status_code, 302)
+        recipes = self.service.list_recipes()
+        self.assertEqual(len(recipes), 1)
+        self.assertEqual(recipes[0].source_link, source_url)
+
+    def test_saved_social_media_link_is_clickable(self):
+        source_url = "https://www.instagram.com/reel/example123/"
+        self.client.post(
+            self.add_url,
+            data=form_data(source_link=source_url)
+        )
+
+        recipe = self.service.list_recipes()[0]
+        response = self.client.get(f"/recipes/{recipe.id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"<h2>Source</h2>", response.data)
+        self.assertIn(f'href="{source_url}"'.encode(), response.data)
+
+    def test_recipe_can_be_saved_without_source_link(self):
+        response = self.client.post(
+            self.add_url,
+            data=form_data()
+        )
+
+        self.assertEqual(response.status_code, 302)
+        recipes = self.service.list_recipes()
+        self.assertEqual(len(recipes), 1)
+        self.assertEqual(recipes[0].source_link, "")
+
+
 if __name__ == "__main__":
     unittest.main()
