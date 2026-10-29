@@ -29,6 +29,10 @@
     </ul>
   </section>
 
+  <form method="POST" action="{{ url_for('main.add_to_shopping_list', recipe_id=recipe.id) }}">
+    <button type="submit" class="button">Add to Shopping List</button>
+  </form>
+
   <section>
     <h2>Steps</h2>
     <ol>

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Shopping List · Recipe Journal{% endblock %}
+
+{% block content %}
+  <section class="intro">
+    <p class="eyebrow">SHOPPING CHECKLIST</p>
+    <h1>Shopping List</h1>
+    <p>Ingredients from your selected recipes.</p>
+  </section>
+
+  <section>
+    {% if items %}
+      <ul>
+        {% for item in items %}
+          <li>
+            <label>
+              <input type="checkbox">
+              {{ item.quantity }} {{ item.unit }} {{ item.name }}
+            </label>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>Your shopping list is empty.</p>
+      <a href="{{ url_for('main.home') }}">Browse recipes</a>
+    {% endif %}
+  </section>
+{% endblock %}

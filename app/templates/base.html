@@ -11,6 +11,7 @@
     <a class="brand" href="{{ url_for('main.home') }}">Recipe Journal</a>
     <nav aria-label="Main navigation">
       <a href="{{ url_for('main.home') }}">My recipes</a>
+      <a href="{{ url_for('main.shopping_list') }}">Shopping List</a>
       {% if session.get("user_name") %}
         <span class="signed-in">{{ session.user_name }}</span>
         <form method="POST" action="{{ url_for('main.logout') }}" class="logout-form">
