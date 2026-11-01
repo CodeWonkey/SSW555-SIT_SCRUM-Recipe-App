@@ -84,7 +84,7 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             steps_raw = request.form.get("steps", "")
             tags_raw = request.form.get("tags", "")
             source_link = request.form.get("source_link", "").strip()
-            
+
             # Parse servings safely
             try:
                 servings = int(servings_str)
@@ -109,7 +109,13 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                         q_val = float(qty)
                     except ValueError:
                         q_val = 1.0
-                    ingredients.append(Ingredient(name=name.strip(), quantity=q_val, unit=unit.strip()))
+                    ingredients.append(
+                        Ingredient(
+                            name=name.strip(),
+                            quantity=q_val,
+                            unit=unit.strip()
+                        )
+                    )
 
             new_recipe = Recipe(
                 id=str(uuid.uuid4())[:8],
@@ -129,7 +135,45 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
         return render_template("add_recipe.html")
 
+    @bp.post("/recipes/<recipe_id>/shopping-list")
+    def add_to_shopping_list(recipe_id: str):
+        try:
+            service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+
+        selected_recipes = session.get("shopping_recipe_ids", [])
+
+        if recipe_id not in selected_recipes:
+            selected_recipes.append(recipe_id)
+            session["shopping_recipe_ids"] = selected_recipes
+
+        return redirect(url_for("main.shopping_list"))
+
+    @bp.get("/shopping-list")
+    def shopping_list():
+        selected_recipes = session.get("shopping_recipe_ids", [])
+
+        valid_recipe_ids = []
+
+        for recipe_id in selected_recipes:
+            try:
+                service.get(recipe_id)
+            except RecipeNotFound:
+                continue
+
+            if recipe_id not in valid_recipe_ids:
+                valid_recipe_ids.append(recipe_id)
+
+        if valid_recipe_ids != selected_recipes:
+            session["shopping_recipe_ids"] = valid_recipe_ids
+
+        items = service.shopping_items(valid_recipe_ids)
+
+        return render_template("shopping_list.html", items=items)
+
     return bp
+
 def edit_recipe():
     # Placeholder for edit recipe functionality
     pass
