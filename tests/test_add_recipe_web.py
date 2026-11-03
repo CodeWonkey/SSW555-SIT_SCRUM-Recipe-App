@@ -3,6 +3,8 @@ import unittest
 from app import create_app
 from app.services.recipes import RecipeService
 
+from tests.tests_helpers import sign_in
+
 
 def form_data(**overrides):
     data = {
@@ -22,7 +24,7 @@ class AddRecipeWebTests(unittest.TestCase):
     def setUp(self):
         self.service = RecipeService()
         self.app = create_app(self.service)
-        self.client = self.app.test_client()
+        self.client = sign_in(self.app.test_client())
         with self.app.test_request_context():
             from flask import url_for
             self.add_url = url_for("main.add_recipe")

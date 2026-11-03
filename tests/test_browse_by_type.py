@@ -5,6 +5,7 @@ import unittest
 from app import create_app
 from app.services.recipes import Ingredient, Recipe, RecipeService
 
+from tests.tests_helpers import sign_in
 
 def sample_service():
     # Type names appear only in tags, so title/ingredient/step matches cannot
@@ -65,6 +66,7 @@ class BrowseByTypeWebTests(unittest.TestCase):
     def setUp(self):
         self.service = sample_service()
         self.client = create_app(self.service).test_client()
+        sign_in(self.client)
 
     def test_searching_by_type_displays_only_matching_recipe_links(self):
         for query in ("Breakfast", "BREAKFAST", "  breakfast  "):

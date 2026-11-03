@@ -3,6 +3,7 @@ import unittest
 from app import create_app
 from app.services.recipes import Ingredient, Recipe, RecipeService
 
+from tests.tests_helpers import sign_in
 
 class ShoppingListWebTests(unittest.TestCase):
     def setUp(self):
@@ -28,6 +29,7 @@ class ShoppingListWebTests(unittest.TestCase):
         ])
         self.app = create_app(self.service)
         self.client = self.app.test_client()
+        sign_in(self.client)
 
     def test_empty_shopping_list(self):
         response = self.client.get("/shopping-list")
