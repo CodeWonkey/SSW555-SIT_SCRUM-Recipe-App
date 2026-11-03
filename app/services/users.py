@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Iterable
 
 from werkzeug.security import check_password_hash, generate_password_hash
+
+from app.services.meal_plan import add_recipe, empty_plan
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LENGTH = 8
@@ -17,6 +19,7 @@ class User:
     name: str
     email: str
     password_hash: str
+    meal_plan: dict[str, list[str]] = field(default_factory=empty_plan)
 
 
 class UserService:
@@ -65,6 +68,14 @@ class UserService:
 
     def password_matches(self, user: User, password: str) -> bool:
         return check_password_hash(user.password_hash, password)
+
+    def assign_meal(self, user_id: str, day: str, recipe_id: str) -> User:
+        """Assign a saved recipe to one day of this account's weekly plan."""
+        user = self.get(user_id)
+        if user is None:
+            raise ValueError("Account not found")
+        user.meal_plan = add_recipe(user.meal_plan, day, recipe_id)
+        return user
 
     def _store(self, user: User) -> None:
         self._by_email[user.email.casefold()] = user

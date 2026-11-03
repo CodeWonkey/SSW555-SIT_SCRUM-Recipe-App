@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Weekly meal plan · Recipe Journal{% endblock %}
+{% block content %}
+  <section class="section-heading">
+    <div>
+      <p class="eyebrow">PLAN AHEAD</p>
+      <h2>Weekly meal plan</h2>
+      <p class="field-hint">{{ user.name }}'s meals for the week.</p>
+    </div>
+    <a class="button button-outline" href="{{ url_for('main.home') }}">Back to recipes</a>
+  </section>
+
+  {% if error %}
+    <p class="form-error" role="alert">{{ error }}</p>
+  {% endif %}
+
+  <form method="POST" class="account-form">
+    <div class="form-field">
+      <label for="day">Day</label>
+      <select id="day" name="day" required>
+        {% for day in days %}
+          <option value="{{ day.key }}">{{ day.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-field">
+      <label for="recipe_id">Saved recipe</label>
+      {% if recipes %}
+        <select id="recipe_id" name="recipe_id" required>
+          {% for recipe in recipes %}
+            <option value="{{ recipe.id }}">{{ recipe.title }}</option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <p class="field-hint">Add a recipe before planning a meal.</p>
+      {% endif %}
+    </div>
+    {% if recipes %}
+      <div class="form-actions">
+        <button type="submit" class="button">Add to plan</button>
+      </div>
+    {% endif %}
+  </form>
+
+  <div class="week">
+    {% for day in days %}
+      <section id="day-{{ day.key }}" class="day-plan">
+        <h3>{{ day.label }}</h3>
+        {% if day.recipes %}
+          <ul>
+            {% for recipe in day.recipes %}
+              <li>
+                <a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">{{ recipe.title }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>Nothing planned.</p>
+        {% endif %}
+      </section>
+    {% endfor %}
+  </div>
+{% endblock %}
