@@ -19,7 +19,9 @@
   <form id="search-recipes" method="GET" action="{{ url_for('main.home') }}" class="recipe-form search-form" role="search">
     <div class="form-field">
       <label for="recipe-search">Search by recipe name or ingredient</label>
+      <input type="search" id="recipe-search" name="q" value="{{ query }}" placeholder="e.g. pasta or tomatoes">
       <input type="hidden" name="sort" value="{{ sort }}">
+
     </div>
     <div class="form-actions">
       <button type="submit" class="button">Search</button>
@@ -43,6 +45,10 @@
 
     <button type="submit" class="button">Apply Sort</button>
   </form>
+
+{% if query %}
+  <p role="status">{{ recipes|length }} recipe{{ 's' if recipes|length != 1 else '' }} found for “{{ query }}”.</p>
+{% endif %}
 
   {% if recipes %}
     <div class="recipe-grid">
