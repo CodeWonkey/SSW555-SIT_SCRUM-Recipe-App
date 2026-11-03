@@ -20,7 +20,7 @@ These entries use the current dependency-based Trello numbering. Some behaviors 
 | US-14 View Recipe Macros | Display per-serving calories, protein, carbohydrates, and fat; show an unavailable state when data is missing. | Service and web tests (`tests/test_nutrition.py`) |
 | US-15 Set dietary restrictions | Save multiple restrictions; reopen and edit preferences. | Planned |
 | US-16 Create a weekly meal plan | Assign recipes to days; view a full week; retain plan between sessions. | Planned |
-| US-17 Scale recipe servings | Scale each ingredient proportionally; reject zero servings; keep saved amounts unchanged. | Service tests |
+| US-17 Scale recipe servings | Change 4 servings to 8 and double all amounts; scale down and reset; reject invalid counts; keep saved amounts unchanged; support refresh and independent visitors. | Service and web tests (`tests/test_servings.py`); automatic submission test (`tests/test_servings_ui.cjs`) |
 | US-18 Write a Recipe Review | Save review and rating; prevent flagged language from being published. | Planned |
 | US-19 Track pantry ingredients | Add an ingredient and quantity; reject or merge duplicate entries; retain after restart. | Planned |
 | US-20 Convert ingredient measurements | Convert supported units accurately; preserve original value; test unsupported conversions. | Planned |

@@ -49,6 +49,10 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
 .recipe-form input::placeholder, .recipe-form textarea::placeholder, .account-form input::placeholder { color: var(--muted); }
 .recipe-form input:focus-visible, .recipe-form textarea:focus-visible, .account-form input:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
 .field-hint { margin: 0; color: var(--muted); font-size: .9rem; }
+.servings-form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 16px 0 8px; }
+.servings-form input { width: 110px; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
+.servings-form input:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.servings-form a { padding: 10px 0; }
 .form-error { margin: 0 0 16px; color: #8a2f2f; font-weight: 650; }
 
 .ingredient-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; }

@@ -188,11 +188,20 @@ class RecipeService:
 
 
     def scale_ingredients(self, recipe_id: str, target_servings: int) -> list[Ingredient]:
+        """Return quantities for a serving count without changing the saved recipe."""
         recipe = self.get(recipe_id)
-        if target_servings < 1:
-            raise ValueError("Target servings must be at least 1")
-        factor = target_servings / recipe.servings
-        return [Ingredient(i.name, i.quantity * factor, i.unit) for i in recipe.ingredients]
+        if type(target_servings) is not int or target_servings < 1:
+            raise ValueError("Servings must be a whole number of at least 1")
+        if type(recipe.servings) is not int or recipe.servings < 1:
+            raise ValueError("The saved recipe must have a valid serving count")
+        try:
+            factor = target_servings / recipe.servings
+            scaled = [Ingredient(i.name, i.quantity * factor, i.unit) for i in recipe.ingredients]
+            if not isfinite(factor) or any(not isfinite(i.quantity) for i in scaled):
+                raise ValueError("Scaled ingredient amounts must be finite")
+        except OverflowError:
+            raise ValueError("The serving count is too large to scale this recipe") from None
+        return scaled
 
     def shopping_items(self, recipe_ids: Iterable[str]) -> list[Ingredient]:
         """Combine same-name ingredients when their units match; preserve other units."""
