@@ -12,6 +12,27 @@ from app.services.meal_plan import add_recipe, empty_plan
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LENGTH = 8
 
+# Value is what we store. Label is what the profile shows.
+DIETARY_RESTRICTIONS = (
+    ("vegetarian", "Vegetarian"),
+    ("gluten-free", "Gluten-free"),
+    ("dairy-free", "Dairy-free"),
+    ("vegan", "Vegan"),
+)
+# Milk and wheat are covered by the dairy-free and gluten-free choices above.
+ALLERGIES = (
+    ("peanuts", "Peanuts"),
+    ("tree-nuts", "Tree nuts"),
+    ("shellfish", "Shellfish"),
+    ("eggs", "Eggs"),
+    ("soy", "Soy"),
+    ("sesame", "Sesame"),
+)
+_ALLOWED_RESTRICTIONS = {value for value, _label in DIETARY_RESTRICTIONS}
+_ALLOWED_ALLERGIES = {value for value, _label in ALLERGIES}
+_ALLERGY_LABELS = {label.casefold(): value for value, label in ALLERGIES}
+_MAX_ALLERGY_LENGTH = 40
+
 
 @dataclass
 class User:
@@ -19,6 +40,9 @@ class User:
     name: str
     email: str
     password_hash: str
+    dietary_restrictions: set[str] = field(default_factory=set)
+    allergies: set[str] = field(default_factory=set)
+    other_allergies: set[str] = field(default_factory=set)
     meal_plan: dict[str, list[str]] = field(default_factory=empty_plan)
 
 
@@ -68,6 +92,79 @@ class UserService:
 
     def password_matches(self, user: User, password: str) -> bool:
         return check_password_hash(user.password_hash, password)
+
+    def update_dietary_restrictions(self, user_id: str, restrictions: Iterable[str]) -> User:
+        """Replace this account's dietary restrictions with the given choices.
+
+        An empty selection clears them. Unknown choices are rejected and the
+        previously saved set is left unchanged. Allergies are not changed.
+        """
+        user = self.get(user_id)
+        if user is None:
+            raise ValueError("Account not found")
+
+        user.dietary_restrictions = self._clean_choices(
+            restrictions, _ALLOWED_RESTRICTIONS, "dietary restriction"
+        )
+        return user
+
+    def update_profile_preferences(
+        self,
+        user_id: str,
+        restrictions: Iterable[str],
+        allergies: Iterable[str],
+        other_allergies: str = "",
+    ) -> User:
+        """Replace dietary restrictions and allergies together.
+
+        Validation runs before anything is saved, so an invalid choice leaves
+        the account unchanged. A typed allergy that matches a checkbox is stored
+        as that checkbox instead of a second custom entry.
+        """
+        user = self.get(user_id)
+        if user is None:
+            raise ValueError("Account not found")
+
+        cleaned_restrictions = self._clean_choices(
+            restrictions, _ALLOWED_RESTRICTIONS, "dietary restriction"
+        )
+        cleaned_allergies = self._clean_choices(allergies, _ALLOWED_ALLERGIES, "allergy")
+        cleaned_allergies, cleaned_other = self._clean_other_allergies(
+            other_allergies, cleaned_allergies
+        )
+        user.dietary_restrictions = cleaned_restrictions
+        user.allergies = cleaned_allergies
+        user.other_allergies = cleaned_other
+        return user
+
+    def _clean_choices(self, selected: Iterable[str], allowed: set[str], kind: str) -> set[str]:
+        cleaned: set[str] = set()
+        for raw in selected:
+            key = raw.strip().casefold()
+            if not key:
+                continue
+            if key not in allowed:
+                raise ValueError(f"Unsupported {kind}: {raw.strip()}")
+            cleaned.add(key)
+        return cleaned
+
+    def _clean_other_allergies(self, raw: str, selected: set[str]) -> tuple[set[str], set[str]]:
+        extras: dict[str, str] = {}
+        for piece in raw.split(","):
+            text = " ".join(piece.split())
+            if not text:
+                continue
+            if len(text) > _MAX_ALLERGY_LENGTH:
+                raise ValueError(f"Each allergy must be {_MAX_ALLERGY_LENGTH} characters or fewer")
+            key = text.casefold()
+            if key in _ALLOWED_ALLERGIES:
+                selected.add(key)
+                continue
+            if key in _ALLERGY_LABELS:
+                selected.add(_ALLERGY_LABELS[key])
+                continue
+            extras.setdefault(key, text)
+        return selected, set(extras.values())
 
     def assign_meal(self, user_id: str, day: str, recipe_id: str) -> User:
         """Assign a saved recipe to one day of this account's weekly plan."""

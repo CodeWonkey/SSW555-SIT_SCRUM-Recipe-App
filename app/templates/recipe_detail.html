@@ -50,6 +50,7 @@
   {% endif %}
 
   <p>
+    <a class="button button-outline" href="{{ url_for('main.edit_recipe', recipe_id=recipe.id) }}">Edit recipe</a>
     <a href="{{ url_for('main.home') }}">Back to recipes</a>
   </p>
 {% endblock %}

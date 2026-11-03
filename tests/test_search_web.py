@@ -3,6 +3,8 @@ import unittest
 from app import create_app
 from app.services.recipes import Ingredient, Recipe, RecipeService
 
+from tests.tests_helpers import sign_in
+
 
 class SearchWebTests(unittest.TestCase):
     def setUp(self):
@@ -11,7 +13,7 @@ class SearchWebTests(unittest.TestCase):
             Recipe("soup", "Vegetable Soup", [Ingredient("Tomatoes", 2, "cups")], ["Simmer"]),
             Recipe("salad", "Green Salad", [Ingredient("Lettuce", 1)], ["Mix"]),
         ])
-        self.client = create_app(self.service).test_client()
+        self.client = sign_in(create_app(self.service).test_client())
 
     def test_home_has_search_form(self):
         response = self.client.get("/")
@@ -69,7 +71,7 @@ class SearchWebTests(unittest.TestCase):
                 self.assertNotIn(b"Clear search", response.data)
 
     def test_search_on_empty_collection(self):
-        response = create_app(RecipeService()).test_client().get("/?q=pasta")
+        response = sign_in(create_app(RecipeService()).test_client()).get("/?q=pasta")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"No recipes found.", response.data)
 

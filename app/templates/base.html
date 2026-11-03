@@ -14,6 +14,7 @@
       <a href="{{ url_for('main.shopping_list') }}">Shopping List</a>
       <a href="{{ url_for('main.meal_plan') }}">Meal plan</a>
       {% if session.get("user_name") %}
+        <a href="{{ url_for('main.profile') }}">Profile</a>
         <span class="signed-in">{{ session.user_name }}</span>
         <form method="POST" action="{{ url_for('main.logout') }}" class="logout-form">
           <button type="submit" class="button button-outline">Log out</button>

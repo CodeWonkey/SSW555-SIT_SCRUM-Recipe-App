@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Profile · Recipe Journal{% endblock %}
+{% block content %}
+  <section class="section-heading">
+    <div>
+      <p class="eyebrow">YOUR ACCOUNT</p>
+      <h2>Profile</h2>
+    </div>
+    <a class="button button-outline" href="{{ url_for('main.home') }}">Back to recipes</a>
+  </section>
+
+  <p>{{ user.name }} · {{ user.email }}</p>
+
+  {% if error %}
+    <p class="form-error" role="alert">{{ error }}</p>
+  {% endif %}
+
+  <form method="POST" class="account-form">
+    <fieldset class="form-field">
+      <legend>Dietary restrictions</legend>
+      <p class="field-hint">Choose the eating patterns you follow. These are saved on your profile.</p>
+      <div class="checkbox-list">
+        {% for value, label in choices %}
+          <label for="restriction-{{ value }}">
+            <input type="checkbox" id="restriction-{{ value }}" name="dietary_restrictions" value="{{ value }}"{% if value in user.dietary_restrictions %} checked{% endif %}>
+            {{ label }}
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <fieldset class="form-field">
+      <legend>Allergies</legend>
+      <p class="field-hint">Select a common allergy, or type any others separated by commas.</p>
+      <div class="checkbox-list">
+        {% for value, label in allergy_choices %}
+          <label for="allergy-{{ value }}">
+            <input type="checkbox" id="allergy-{{ value }}" name="allergies" value="{{ value }}"{% if value in user.allergies %} checked{% endif %}>
+            {{ label }}
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <div class="form-field">
+      <label for="other-allergies">Other allergies</label>
+      <input type="text" id="other-allergies" name="other_allergies" value="{{ other_allergies }}" placeholder="e.g. kiwi, mustard">
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="button">Save preferences</button>
+    </div>
+  </form>
+
+  <section>
+    <h3>Saved preferences</h3>
+    {% if user.dietary_restrictions or user.allergies or user.other_allergies %}
+      <ul id="saved-preferences" class="saved-preferences">
+        {% for value, label in choices %}
+          {% if value in user.dietary_restrictions %}
+            <li>{{ label }}</li>
+          {% endif %}
+        {% endfor %}
+        {% for value, label in allergy_choices %}
+          {% if value in user.allergies %}
+            <li>{{ label }}</li>
+          {% endif %}
+        {% endfor %}
+        {% for allergy in user.other_allergies|sort %}
+          <li>{{ allergy }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No dietary restrictions or allergies saved.</p>
+    {% endif %}
+  </section>
+{% endblock %}

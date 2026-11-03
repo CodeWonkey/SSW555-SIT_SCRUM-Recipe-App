@@ -3,18 +3,20 @@ import unittest
 from app import create_app
 from app.services.recipes import Ingredient, Recipe, RecipeService
 
+from tests.tests_helpers import sign_in
+
 
 class WebSmokeTests(unittest.TestCase):
     def test_home_page_renders_recipe_list(self):
         service = RecipeService([Recipe("pasta", "Tomato Pasta", [Ingredient("Tomato", 2, "cups")], ["Cook"], servings=2)])
-        client = create_app(service).test_client()
+        client = sign_in(create_app(service).test_client())
         response = client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Tomato Pasta", response.data)
         self.assertIn(b"styles.css", response.data)
 
     def test_empty_home_page_shows_empty_state(self):
-        response = create_app(RecipeService()).test_client().get("/")
+        response = sign_in(create_app(RecipeService()).test_client()).get("/")
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Your recipe box is ready", response.data)
 
@@ -29,7 +31,7 @@ class WebSmokeTests(unittest.TestCase):
             rating=5,
             source_link="https://example.com/tomato-pasta",
         )
-        client = create_app(RecipeService([recipe])).test_client()
+        client = sign_in(create_app(RecipeService([recipe])).test_client())
 
         response = client.get("/recipes/pasta")
 
@@ -46,7 +48,7 @@ class WebSmokeTests(unittest.TestCase):
         self.assertIn(b"https://example.com/tomato-pasta", response.data)
 
     def test_recipe_detail_page_returns_404_for_missing_recipe(self):
-        client = create_app(RecipeService()).test_client()
+        client = sign_in(create_app(RecipeService()).test_client())
 
         response = client.get("/recipes/missing")
 

@@ -3,11 +3,34 @@ import uuid
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
 from app.services.meal_plan import DAYS
 from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient
-from app.services.users import UserService
+from app.services.users import ALLERGIES, DIETARY_RESTRICTIONS, UserService
+
+
+def _profile_context(user, error: str | None = None) -> dict:
+    return {
+        "user": user,
+        "choices": DIETARY_RESTRICTIONS,
+        "allergy_choices": ALLERGIES,
+        "other_allergies": ", ".join(sorted(user.other_allergies, key=str.casefold)),
+        "error": error,
+    }
 
 
 def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
     bp = Blueprint("main", __name__)
+    PUBLIC_ENDPOINTS = {"main.login", "main.register"}
+
+    @bp.before_request
+    def require_login():
+        if request.endpoint in PUBLIC_ENDPOINTS or "user_id" in session:
+            return None
+        return redirect(url_for("main.login", next=request.full_path.rstrip("?")))
+
+    def _safe_next(target: str | None) -> str:
+        # Only allow local paths, so "next" can't be used as an open redirect.
+        if target and target.startswith("/") and not target.startswith("//"):
+            return target
+        return url_for("main.home")
 
     @bp.get("/")
     def home():
@@ -43,7 +66,7 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
         session["user_id"] = user.id
         session["user_name"] = user.name
-        return redirect(url_for("main.home"))
+        return redirect(_safe_next(request.args.get("next")))
 
     @bp.route("/login", methods=["GET", "POST"])
     def login():
@@ -61,12 +84,41 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
         session["user_id"] = user.id
         session["user_name"] = user.name
-        return redirect(url_for("main.home"))
+        return redirect(_safe_next(request.args.get("next")))
 
     @bp.post("/logout")
     def logout():
         session.clear()
         return redirect(url_for("main.home"))
+
+    def current_user():
+        user_id = session.get("user_id")
+        if not user_id:
+            return None
+        return users.get(user_id)
+
+    @bp.route("/profile", methods=["GET", "POST"])
+    def profile():
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+
+        if request.method == "POST":
+            try:
+                user = users.update_profile_preferences(
+                    user.id,
+                    request.form.getlist("dietary_restrictions"),
+                    request.form.getlist("allergies"),
+                    request.form.get("other_allergies", ""),
+                )
+            except ValueError as exc:
+                return render_template(
+                    "profile.html",
+                    **_profile_context(users.get(user.id), error=str(exc)),
+                ), 400
+            return redirect(url_for("main.profile"))
+
+        return render_template("profile.html", **_profile_context(user))
 
     @bp.get("/recipes/<recipe_id>")
     def recipe_detail(recipe_id: str):
@@ -77,57 +129,38 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
            
         return render_template("recipe_detail.html", recipe=recipe)
 
+    def _parse_recipe_form() -> dict:
+        try:
+            servings = int(request.form.get("servings", "1"))
+        except ValueError:
+            servings = 1
+
+        ingredients = []
+        for name, qty, unit in zip(
+            request.form.getlist("ingredient_name[]"),
+            request.form.getlist("ingredient_quantity[]"),
+            request.form.getlist("ingredient_unit[]"),
+        ):
+            if name.strip():
+                try:
+                    q_val = float(qty)
+                except ValueError:
+                    q_val = 1.0
+                ingredients.append(Ingredient(name=name.strip(), quantity=q_val, unit=unit.strip()))
+
+        return {
+            "title": request.form.get("title", "").strip(),
+            "servings": servings,
+            "steps": [s.strip() for s in request.form.get("steps", "").split("\n") if s.strip()],
+            "tags": {t.strip() for t in request.form.get("tags", "").split(",") if t.strip()},
+            "ingredients": ingredients,
+            "source_link": request.form.get("source_link", "").strip(),
+        }
+
     @bp.route("/recipes/add", methods=["GET", "POST"])
     def add_recipe():
         if request.method == "POST":
-            title = request.form.get("title", "").strip()
-            servings_str = request.form.get("servings", "1")
-            steps_raw = request.form.get("steps", "")
-            tags_raw = request.form.get("tags", "")
-            source_link = request.form.get("source_link", "").strip()
-
-            # Parse servings safely
-            try:
-                servings = int(servings_str)
-            except ValueError:
-                servings = 1
-
-            # Parse steps (split by newlines)
-            steps = [s.strip() for s in steps_raw.split("\n") if s.strip()]
-
-            # Parse tags (split by comma)
-            tags = {t.strip() for t in tags_raw.split(",") if t.strip()}
-
-            # Parse dynamic ingredients from form fields
-            ingredient_names = request.form.getlist("ingredient_name[]")
-            ingredient_quantities = request.form.getlist("ingredient_quantity[]")
-            ingredient_units = request.form.getlist("ingredient_unit[]")
-
-            ingredients = []
-            for name, qty, unit in zip(ingredient_names, ingredient_quantities, ingredient_units):
-                if name.strip():
-                    try:
-                        q_val = float(qty)
-                    except ValueError:
-                        q_val = 1.0
-                    ingredients.append(
-                        Ingredient(
-                            name=name.strip(),
-                            quantity=q_val,
-                            unit=unit.strip()
-                        )
-                    )
-
-            new_recipe = Recipe(
-                id=str(uuid.uuid4())[:8],
-                title=title,
-                ingredients=ingredients,
-                steps=steps,
-                servings=servings,
-                tags=tags,
-                source_link=source_link
-            )
-
+            new_recipe = Recipe(id=str(uuid.uuid4())[:8], **_parse_recipe_form())
             try:
                 service.create(new_recipe)
                 return redirect(url_for("main.home"))
@@ -172,6 +205,22 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         items = service.shopping_items(valid_recipe_ids)
 
         return render_template("shopping_list.html", items=items)
+
+    @bp.route("/recipes/<recipe_id>/edit", methods=["GET", "POST"])
+    def edit_recipe(recipe_id: str):
+        try:
+            recipe = service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+
+        if request.method == "POST":
+            try:
+                service.update(recipe_id, **_parse_recipe_form())
+                return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
+            except ValueError as e:
+                flash(str(e), "danger")
+
+        return render_template("add_recipe.html", recipe=recipe)
 
     def current_user():
         user_id = session.get("user_id")
@@ -233,7 +282,3 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         )
 
     return bp
-
-def edit_recipe():
-    # Placeholder for edit recipe functionality
-    pass
