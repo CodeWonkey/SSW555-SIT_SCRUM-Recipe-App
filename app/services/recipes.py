@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import re
 from dataclasses import dataclass, field
 from math import isfinite
 from typing import Iterable
@@ -35,6 +35,15 @@ class Nutrition:
                    (self.calories, self.protein, self.carbs, self.fat))
 
 
+@dataclass(frozen=True)
+class Review:
+    author_id: str
+    author_name: str
+    rating: int
+    text: str
+
+
+
 @dataclass
 class Recipe:
     id: str
@@ -48,6 +57,7 @@ class Recipe:
     rating: int | None = None
     notes: str = ""
     source_link: str = ""
+    reviews: list[Review] = field(default_factory=list)
     nutrition: Nutrition | None = None
 
 
@@ -139,6 +149,43 @@ class RecipeService:
         recipe = self.get(recipe_id)
         recipe.rating = stars
         return recipe
+
+    def add_review(
+        self,
+        recipe_id: str,
+        author_id: str,
+        author_name: str,
+        rating: int,
+        text: str,
+    ) -> Review:
+        recipe = self.get(recipe_id)
+        clean_text = text.strip()
+
+        if not isinstance(rating, int) or not 1 <= rating <= 5:
+            raise ValueError("Rating must be between 1 and 5.")
+
+        if not clean_text:
+            raise ValueError("Review text cannot be empty.")
+
+        if len(clean_text) > 1000:
+            raise ValueError("Review must be 1000 characters or fewer.")
+
+        flagged_words = {"stupid", "idiot"}
+        words = set(re.findall(r"\b\w+\b", clean_text.casefold()))
+
+        if words & flagged_words:
+            raise ValueError("Review contains flagged language.")
+
+        review = Review(
+            author_id=author_id,
+            author_name=author_name,
+            rating=rating,
+            text=clean_text,
+        )
+
+        recipe.reviews.append(review)
+        return review
+
 
     def scale_ingredients(self, recipe_id: str, target_servings: int) -> list[Ingredient]:
         recipe = self.get(recipe_id)
