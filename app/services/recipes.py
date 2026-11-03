@@ -57,7 +57,7 @@ class RecipeService:
 
     def update(self, recipe_id: str, **changes: object) -> Recipe:
         recipe = self.get(recipe_id)
-        allowed = {"title", "ingredients", "steps", "servings", "tags", "notes"}
+        allowed = {"title", "ingredients", "steps", "servings", "tags", "notes", "source_link"}
         unknown = set(changes) - allowed
         if unknown:
             raise ValueError(f"Unsupported recipe fields: {', '.join(sorted(unknown))}")

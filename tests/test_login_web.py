@@ -89,6 +89,46 @@ class LoginWebTests(unittest.TestCase):
         with self.client.session_transaction() as session:
             self.assertNotIn("user_id", session)
 
+    def test_anonymous_visitor_is_redirected_to_login(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login?next=", response.headers["Location"])
+
+    def test_anonymous_visitor_cannot_open_protected_pages(self):
+        for path in ("/recipes/add", "/recipes/does-not-matter"):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 302)
+                self.assertIn("/login", response.headers["Location"])
+
+    def test_login_and_register_pages_stay_public(self):
+        for path in ("/login", "/register"):
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 200)
+
+    def test_login_returns_user_to_the_page_they_wanted(self):
+        response = self.client.post(
+            "/login?next=/recipes/add",
+            data={"email": "john@example.com", "password": "johnnydoe-123"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/recipes/add"))
+
+    def test_login_ignores_external_next_urls(self):
+        response = self.client.post(
+            "/login?next=//evil.example.com",
+            data={"email": "john@example.com", "password": "johnnydoe-123"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn("evil.example.com", response.headers["Location"])
+
+    def test_signed_in_user_can_open_protected_pages(self):
+        self.client.post(
+            "/login",
+            data={"email": "john@example.com", "password": "johnnydoe-123"},
+        )
+        self.assertEqual(self.client.get("/").status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()
