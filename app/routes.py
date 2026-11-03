@@ -1,6 +1,8 @@
 import uuid
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
+from app.services.recipe_fetch import fetch_recipe_html
+from app.services.recipe_import import build_recipe_draft, extract_recipe
 from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient
 from app.services.users import ALLERGIES, DIETARY_RESTRICTIONS, UserService
 
@@ -159,12 +161,18 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
     @bp.route("/recipes/add", methods=["GET", "POST"])
     def add_recipe():
         if request.method == "POST":
-            new_recipe = Recipe(id=str(uuid.uuid4())[:8], **_parse_recipe_form())
+            form_values = _parse_recipe_form()
+            new_recipe = Recipe(id=str(uuid.uuid4())[:8], **form_values)
             try:
                 service.create(new_recipe)
                 return redirect(url_for("main.home"))
             except ValueError as e:
-                flash(str(e), "danger")
+                return render_template(
+                    "add_recipe.html",
+                    draft=form_values,
+                    imported=request.form.get("_imported") == "1",
+                    form_error=str(e),
+                ), 400
 
         return render_template("add_recipe.html")
 
@@ -220,5 +228,25 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 flash(str(e), "danger")
 
         return render_template("add_recipe.html", recipe=recipe)
+
+    @bp.route("/recipes/import", methods=["GET", "POST"])
+    def import_recipe():
+        source_url = ""
+        error = None
+
+        if request.method == "POST":
+            source_url = request.form.get("source_url", "").strip()
+            try:
+                html = fetch_recipe_html(source_url)
+                draft = build_recipe_draft(extract_recipe(html), source_url)
+                return render_template(
+                    "add_recipe.html", draft=draft, imported=True
+                )
+            except ValueError as exc:
+                error = str(exc)
+
+        return render_template(
+            "import_recipe.html", source_url=source_url, error=error
+        ), 400 if error else 200
 
     return bp
