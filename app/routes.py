@@ -2,7 +2,7 @@ import uuid
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
 from app.services.meal_plan import DAYS
-from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient
+from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient, Nutrition
 from app.services.users import ALLERGIES, DIETARY_RESTRICTIONS, UserService
 
 
@@ -172,6 +172,21 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                     q_val = 1.0
                 ingredients.append(Ingredient(name=name.strip(), quantity=q_val, unit=unit.strip()))
 
+        nutrition_fields = ("calories", "protein", "carbs", "fat")
+        # An older client that does not submit nutrition must not erase it on edit.
+        nutrition_changes = {}
+        if any(name in request.form for name in nutrition_fields):
+            values = [request.form.get(name, "").strip() for name in nutrition_fields]
+            nutrition = None
+            if any(values):
+                if not all(values):
+                    raise ValueError("Enter all four nutrition values, or leave all four blank")
+                try:
+                    nutrition = Nutrition(**dict(zip(nutrition_fields, map(float, values))))
+                except ValueError:
+                    raise ValueError("Nutrition values must be finite, non-negative numbers") from None
+            nutrition_changes["nutrition"] = nutrition
+
         return {
             "title": request.form.get("title", "").strip(),
             "servings": servings,
@@ -179,13 +194,14 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             "tags": {t.strip() for t in request.form.get("tags", "").split(",") if t.strip()},
             "ingredients": ingredients,
             "source_link": request.form.get("source_link", "").strip(),
+            **nutrition_changes,
         }
 
     @bp.route("/recipes/add", methods=["GET", "POST"])
     def add_recipe():
         if request.method == "POST":
-            new_recipe = Recipe(id=str(uuid.uuid4())[:8], **_parse_recipe_form())
             try:
+                new_recipe = Recipe(id=str(uuid.uuid4())[:8], **_parse_recipe_form())
                 service.create(new_recipe)
                 return redirect(url_for("main.home"))
             except ValueError as e:

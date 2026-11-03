@@ -18,6 +18,23 @@
     {% endif %}
   </section>
 
+  <section class="nutrition-panel" aria-labelledby="nutrition-heading">
+    <h2 id="nutrition-heading">Nutrition</h2>
+    {% if recipe.nutrition and recipe.nutrition.available %}
+      <p class="field-hint">Per serving</p>
+      <dl class="nutrition-grid">
+        {% for key, label, unit in [('calories', 'Calories', 'kcal'), ('protein', 'Protein', 'g'), ('carbs', 'Carbs', 'g'), ('fat', 'Fat', 'g')] %}
+          <div>
+            <dt>{{ label }}</dt>
+            <dd>{{ '%g'|format(recipe.nutrition|attr(key)) }} {{ unit }}</dd>
+          </div>
+        {% endfor %}
+      </dl>
+    {% else %}
+      <p class="field-hint">Nutrition info unavailable</p>
+    {% endif %}
+  </section>
+
   <section>
     <h2>Ingredients</h2>
     <ul>
