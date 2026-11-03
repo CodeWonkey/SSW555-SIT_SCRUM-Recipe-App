@@ -7,7 +7,7 @@
     <h1>{{ recipe.title }}</h1>
 
     <p>
-      {{ recipe.servings }} servings
+      {{ target_servings }} servings
       {% if recipe.rating is not none %}
         · Rating: {{ recipe.rating }}/5
       {% endif %}
@@ -20,14 +20,30 @@
 
   <section>
     <h2>Ingredients</h2>
+    <form method="GET" action="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}"
+          class="servings-form" id="servings-form">
+      <div class="form-field">
+        <label for="servings">Servings</label>
+        <input type="number" id="servings" name="servings" min="1" step="1" required
+               value="{{ target_servings }}" aria-describedby="servings-hint{% if servings_error %} servings-error{% endif %}"
+               {% if servings_error %}aria-invalid="true"{% endif %}>
+      </div>
+      <button type="submit" class="button">Update servings</button>
+      <a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">Reset to {{ recipe.servings }}</a>
+    </form>
+    <p class="field-hint" id="servings-hint">Original recipe: {{ recipe.servings }} servings. Changing servings adjusts ingredient amounts without changing your saved recipe.</p>
+    {% if servings_error %}
+      <p class="form-error" id="servings-error" role="alert">{{ servings_error }}</p>
+    {% endif %}
     <ul>
-      {% for ingredient in recipe.ingredients %}
+      {% for ingredient in ingredients %}
         <li>
-          {{ ingredient.quantity }} {{ ingredient.unit }} {{ ingredient.name }}
+          {{ '%.12g'|format(ingredient.quantity) }} {{ ingredient.unit }} {{ ingredient.name }}
         </li>
       {% endfor %}
     </ul>
   </section>
+  <script src="{{ url_for('static', filename='js/servings.js') }}" defer></script>
 
   <form method="POST" action="{{ url_for('main.add_to_shopping_list', recipe_id=recipe.id) }}">
     <button type="submit" class="button">Add to Shopping List</button>

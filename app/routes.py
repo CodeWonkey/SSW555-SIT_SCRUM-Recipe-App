@@ -151,7 +151,25 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
            
         user = current_user()
         is_saved = user is not None and recipe_id in user.favorites
-        return render_template("recipe_detail.html", recipe=recipe, is_saved=is_saved)
+        target_servings = recipe.servings
+        ingredients = recipe.ingredients
+        error = None
+        try:
+            if "servings" in request.args:
+                try:
+                    target_servings = int(request.args["servings"])
+                except ValueError:
+                    raise ValueError("Servings must be a whole number of at least 1") from None
+            ingredients = service.scale_ingredients(recipe_id, target_servings)
+        except ValueError as exc:
+            error = str(exc)
+            # Keep the original recipe readable when a requested count is invalid.
+            target_servings = recipe.servings
+        return render_template(
+            "recipe_detail.html", recipe=recipe, is_saved=is_saved,
+            ingredients=ingredients, target_servings=target_servings,
+            servings_error=error,
+        ), 400 if error else 200
 
     def _parse_recipe_form() -> dict:
         try:
