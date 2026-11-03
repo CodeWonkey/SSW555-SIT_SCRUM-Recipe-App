@@ -2,6 +2,8 @@ import uuid
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
 from app.services.meal_plan import DAYS
+from app.services.recipe_fetch import fetch_recipe_html
+from app.services.recipe_import import build_recipe_draft, extract_recipe
 from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient, Nutrition
 from app.services.users import ALLERGIES, DIETARY_RESTRICTIONS, UserService
 
@@ -32,7 +34,6 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             return target
         return url_for("main.home")
 
-    
     @bp.get("/")
     def home():
         query = request.args.get("q", "").strip()
@@ -171,7 +172,7 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             servings_error=error,
         ), 400 if error else 200
 
-    def _parse_recipe_form() -> dict:
+    def _parse_recipe_form(*, include_nutrition: bool = True) -> dict:
         try:
             servings = int(request.form.get("servings", "1"))
         except ValueError:
@@ -193,7 +194,7 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         nutrition_fields = ("calories", "protein", "carbs", "fat")
         # An older client that does not submit nutrition must not erase it on edit.
         nutrition_changes = {}
-        if any(name in request.form for name in nutrition_fields):
+        if include_nutrition and any(name in request.form for name in nutrition_fields):
             values = [request.form.get(name, "").strip() for name in nutrition_fields]
             nutrition = None
             if any(values):
@@ -218,12 +219,27 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
     @bp.route("/recipes/add", methods=["GET", "POST"])
     def add_recipe():
         if request.method == "POST":
+            form_values = _parse_recipe_form(include_nutrition=False)
+            imported = request.form.get("_imported") == "1"
             try:
-                new_recipe = Recipe(id=str(uuid.uuid4())[:8], **_parse_recipe_form())
+                form_values = _parse_recipe_form()
+            except ValueError as e:
+                flash(str(e), "danger")
+                return render_template(
+                    "add_recipe.html", draft=form_values, imported=imported
+                )
+
+            try:
+                new_recipe = Recipe(id=str(uuid.uuid4())[:8], **form_values)
                 service.create(new_recipe)
                 return redirect(url_for("main.home"))
             except ValueError as e:
-                flash(str(e), "danger")
+                return render_template(
+                    "add_recipe.html",
+                    draft=form_values,
+                    imported=imported,
+                    form_error=str(e),
+                ), 400
 
         return render_template("add_recipe.html")
 
@@ -279,7 +295,7 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 flash(str(e), "danger")
 
         return render_template("add_recipe.html", recipe=recipe)
-    
+
     @bp.post("/recipes/<recipe_id>/reviews")
     def submit_recipe_review(recipe_id: str):
         try:
@@ -320,7 +336,7 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         service.delete(recipe_id)
         flash(f'Deleted "{recipe.title}".', "success")
         return redirect(url_for("main.home"))
-    
+
     def current_user():
         user_id = session.get("user_id")
         if not user_id:
@@ -406,5 +422,24 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 continue
         return render_template("favorites.html", recipes=recipes)
 
-    
+    @bp.route("/recipes/import", methods=["GET", "POST"])
+    def import_recipe():
+        source_url = ""
+        error = None
+
+        if request.method == "POST":
+            source_url = request.form.get("source_url", "").strip()
+            try:
+                html = fetch_recipe_html(source_url)
+                draft = build_recipe_draft(extract_recipe(html), source_url)
+                return render_template(
+                    "add_recipe.html", draft=draft, imported=True
+                )
+            except ValueError as exc:
+                error = str(exc)
+
+        return render_template(
+            "import_recipe.html", source_url=source_url, error=error
+        ), 400 if error else 200
+
     return bp

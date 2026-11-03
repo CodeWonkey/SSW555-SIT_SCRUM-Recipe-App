@@ -1,33 +1,42 @@
 {% extends "base.html" %}
-{% block title %}{{ "Edit" if recipe else "Add" }} Recipe · Recipe Journal{% endblock %}
+{% set form_recipe = draft if draft is defined else recipe %}
+{% block title %}{{ "Review imported" if imported else ("Edit" if recipe else "Add") }} Recipe · Recipe Journal{% endblock %}
 {% block content %}
   <section class="section-heading">
     <div>
-      <p class="eyebrow">{{ "EDIT RECIPE" if recipe else "NEW RECIPE" }}</p>
-      <h2>{{ "Edit recipe" if recipe else "Add a recipe" }}</h2>
+      <p class="eyebrow">{{ "IMPORTED RECIPE" if imported else ("EDIT RECIPE" if recipe else "NEW RECIPE") }}</p>
+      <h2>{{ "Review imported recipe" if imported else ("Edit recipe" if recipe else "Add a recipe") }}</h2>
     </div>
-    <a class="button button-outline" href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) if recipe else url_for('main.home') }}">Cancel</a>
+    <a class="button button-outline" href="{{ url_for('main.import_recipe') if imported else (url_for('main.recipe_detail', recipe_id=recipe.id) if recipe else url_for('main.home')) }}">Cancel</a>
   </section>
 
-  <form method="POST" class="recipe-form">
+  {% if imported %}
+    <p role="status">Your recipe has not been saved yet. Review the fields below. Ingredient lines are preserved as written; separate each name, quantity, and unit before saving. Fill in any missing servings.</p>
+  {% endif %}
+  {% if form_error %}
+    <p role="alert">{{ form_error }}</p>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('main.edit_recipe', recipe_id=recipe.id) if recipe else url_for('main.add_recipe') }}" class="recipe-form">
+    {% if imported %}<input type="hidden" name="_imported" value="1">{% endif %}
     <div class="form-field">
       <label for="title">Recipe title</label>
-      <input type="text" id="title" name="title" required placeholder="e.g., Homemade Pancakes" value="{{ recipe.title if recipe else '' }}">
+      <input type="text" id="title" name="title" required placeholder="e.g., Homemade Pancakes" value="{{ form_recipe.title if form_recipe else '' }}">
     </div>
 
     <div class="form-field">
       <label for="servings">Servings</label>
-      <input type="number" id="servings" name="servings" value="{{ recipe.servings if recipe else 4 }}" min="1" required>
+      <input type="number" id="servings" name="servings" value="{{ form_recipe.servings if form_recipe else 4 }}" min="1" required>
     </div>
 
     <div class="form-field">
       <label for="tags">Tags (comma-separated)</label>
-      <input type="text" id="tags" name="tags" placeholder="Breakfast, Easy, Quick" value="{{ recipe.tags|sort|join(', ') if recipe else '' }}">
+      <input type="text" id="tags" name="tags" placeholder="Breakfast, Easy, Quick" value="{{ form_recipe.tags|sort|join(', ') if form_recipe else '' }}">
     </div>
 
     <div class="form-field">
       <label for="source_link">Source Link (optional)</label>
-      <input type="url" id="source_link" name="source_link" placeholder="https://www.instagram.com/reel/..." value="{{ recipe.source_link if recipe else '' }}">
+      <input type="url" id="source_link" name="source_link" placeholder="https://example.com/recipe" value="{{ form_recipe.source_link if form_recipe else '' }}">
     </div>
 
     <fieldset class="form-field" aria-describedby="nutrition-hint">
@@ -48,7 +57,7 @@
     <fieldset class="form-field">
       <legend>Ingredients</legend>
       <div id="ingredient-container">
-        {% for ing in (recipe.ingredients if recipe and recipe.ingredients else [None]) %}
+        {% for ing in (form_recipe.ingredients if form_recipe and form_recipe.ingredients else [None]) %}
         <div class="ingredient-row">
           <input type="text" name="ingredient_name[]" placeholder="Name (e.g., Flour)" required value="{{ ing.name if ing else '' }}">
           <input type="number" step="any" name="ingredient_quantity[]" placeholder="Qty" required value="{{ ing.quantity if ing else '' }}">
@@ -62,7 +71,7 @@
 
     <div class="form-field">
       <label for="steps">Steps (one per line)</label>
-      <textarea id="steps" name="steps" rows="5" required placeholder="Mix dry ingredients...&#10;Add wet ingredients...">{{ recipe.steps|join("\n") if recipe else "" }}</textarea>
+      <textarea id="steps" name="steps" rows="5" required placeholder="Mix dry ingredients...&#10;Add wet ingredients...">{{ form_recipe.steps|join("\n") if form_recipe else "" }}</textarea>
     </div>
 
     <div class="form-actions">
