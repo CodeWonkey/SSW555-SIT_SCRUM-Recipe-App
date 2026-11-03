@@ -66,6 +66,56 @@
     </ol>
   </section>
 
+  <section>
+    <h2>Recipe Reviews</h2>
+
+    <form method="POST"
+          action="{{ url_for('main.submit_recipe_review', recipe_id=recipe.id) }}">
+
+      <div class="form-field">
+        <label for="review-rating">Your Rating</label>
+        <select id="review-rating" name="rating" required>
+          <option value="">Select a rating</option>
+          <option value="1">1 Star</option>
+          <option value="2">2 Stars</option>
+          <option value="3">3 Stars</option>
+          <option value="4">4 Stars</option>
+          <option value="5">5 Stars</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="review-text">Your Review</label>
+        <textarea id="review-text"
+                  name="review"
+                  rows="4"
+                  maxlength="1000"
+                  required
+                  placeholder="Share your thoughts about this recipe..."></textarea>
+      </div>
+
+      <button type="submit" class="button">
+        Submit Review
+      </button>
+    </form>
+
+    <h3>Previous Reviews</h3>
+
+    {% if recipe.reviews %}
+      <ul>
+        {% for review in recipe.reviews %}
+          <li>
+            <strong>{{ review.author_name }}</strong>
+            - {{ review.rating }}/5 stars
+            <p>{{ review.text }}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No reviews yet. Be the first to leave one!</p>
+    {% endif %}
+  </section>
+
   {% if recipe.source_link %}
     <section>
       <h2>Source</h2>

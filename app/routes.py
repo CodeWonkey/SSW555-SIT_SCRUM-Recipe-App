@@ -262,6 +262,36 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
         return render_template("add_recipe.html", recipe=recipe)
     
+    @bp.post("/recipes/<recipe_id>/reviews")
+    def submit_recipe_review(recipe_id: str):
+        try:
+            service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+
+        try:
+            rating = int(request.form.get("rating", ""))
+        except ValueError:
+            rating = 0
+
+        try:
+            service.add_review(
+                recipe_id=recipe_id,
+                author_id=session["user_id"],
+                author_name=session.get("user_name", "User"),
+                rating=rating,
+                text=request.form.get("review", ""),
+            )
+            flash("Review submitted successfully.", "success")
+
+        except ValueError as error:
+            flash(str(error), "danger")
+
+        return redirect(
+            url_for("main.recipe_detail", recipe_id=recipe_id)
+        )
+
+
     @bp.post("/recipes/<recipe_id>/delete")
     def delete_recipe(recipe_id: str):
         try:
