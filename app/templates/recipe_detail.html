@@ -49,6 +49,30 @@
     </ol>
   </section>
 
+  <section>
+    <h2>Personal Recipe Notes</h2>
+    <p>Save cooking tips and changes for next time.</p>
+
+    <form method="POST"
+          action="{{ url_for('main.save_recipe_notes', recipe_id=recipe.id) }}">
+
+      <div class="form-field">
+        <label for="notes">Your Notes</label>
+        <textarea id="notes"
+                  name="notes"
+                  rows="5"
+                  placeholder="Add your cooking notes here...">{{ recipe.notes }}</textarea>
+      </div>
+
+      <button type="submit" class="button">Save Notes</button>
+    </form>
+
+    {% if recipe.notes %}
+      <h3>Saved Notes</h3>
+      <p style="white-space: pre-wrap;">{{ recipe.notes }}</p>
+    {% endif %}
+  </section>
+
   {% if recipe.source_link %}
     <section>
       <h2>Source</h2>
