@@ -85,6 +85,7 @@ class MealPlanWebTests(unittest.TestCase):
         self.assertEqual(self.users.get(self.user.id).meal_plan["monday"], [])
 
     def test_main_page_links_to_the_meal_planner(self):
+        self.login()
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
