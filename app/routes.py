@@ -221,7 +221,18 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 flash(str(e), "danger")
 
         return render_template("add_recipe.html", recipe=recipe)
+    
+    @bp.post("/recipes/<recipe_id>/delete")
+    def delete_recipe(recipe_id: str):
+        try:
+            recipe = service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
 
+        service.delete(recipe_id)
+        flash(f'Deleted "{recipe.title}".', "success")
+        return redirect(url_for("main.home"))
+    
     def current_user():
         user_id = session.get("user_id")
         if not user_id:

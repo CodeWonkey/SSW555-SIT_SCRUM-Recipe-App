@@ -25,7 +25,14 @@
       {% endif %}
     </nav>
   </header>
-  <main class="page-shell">{% block content %}{% endblock %}</main>
+  <main class="page-shell">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <p class="flash flash-{{ category }}" role="alert">{{ message }}</p>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
   <footer class="site-footer">CS555 team starter · Sample content only</footer>
 </body>
 </html>
