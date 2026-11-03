@@ -1,9 +1,10 @@
 import uuid
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
+from app.services.meal_plan import DAYS
 from app.services.recipe_fetch import fetch_recipe_html
 from app.services.recipe_import import build_recipe_draft, extract_recipe
-from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient
+from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient, Nutrition
 from app.services.users import ALLERGIES, DIETARY_RESTRICTIONS, UserService
 
 
@@ -36,7 +37,28 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
     @bp.get("/")
     def home():
         query = request.args.get("q", "").strip()
-        return render_template("index.html", recipes=service.search(query), query=query)
+        sort = request.args.get("sort", "newest")
+
+        if sort not in {"newest", "az", "za"}:
+            sort = "newest"
+
+        recipes = service.search(query)
+
+        if sort == "newest":
+            recipes = list(reversed(recipes))
+        else:
+            recipes = sorted(
+                recipes,
+                key=lambda recipe: recipe.title.casefold(),
+                reverse=(sort == "za")
+            )
+
+        return render_template(
+            "index.html",
+            recipes=recipes,
+            query=query,
+            sort=sort
+        )
 
     @bp.route("/register", methods=["GET", "POST"])
     def register():
@@ -128,9 +150,29 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         except RecipeNotFound:
             abort(404)
            
-        return render_template("recipe_detail.html", recipe=recipe)
+        user = current_user()
+        is_saved = user is not None and recipe_id in user.favorites
+        target_servings = recipe.servings
+        ingredients = recipe.ingredients
+        error = None
+        try:
+            if "servings" in request.args:
+                try:
+                    target_servings = int(request.args["servings"])
+                except ValueError:
+                    raise ValueError("Servings must be a whole number of at least 1") from None
+            ingredients = service.scale_ingredients(recipe_id, target_servings)
+        except ValueError as exc:
+            error = str(exc)
+            # Keep the original recipe readable when a requested count is invalid.
+            target_servings = recipe.servings
+        return render_template(
+            "recipe_detail.html", recipe=recipe, is_saved=is_saved,
+            ingredients=ingredients, target_servings=target_servings,
+            servings_error=error,
+        ), 400 if error else 200
 
-    def _parse_recipe_form() -> dict:
+    def _parse_recipe_form(*, include_nutrition: bool = True) -> dict:
         try:
             servings = int(request.form.get("servings", "1"))
         except ValueError:
@@ -149,6 +191,21 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                     q_val = 1.0
                 ingredients.append(Ingredient(name=name.strip(), quantity=q_val, unit=unit.strip()))
 
+        nutrition_fields = ("calories", "protein", "carbs", "fat")
+        # An older client that does not submit nutrition must not erase it on edit.
+        nutrition_changes = {}
+        if include_nutrition and any(name in request.form for name in nutrition_fields):
+            values = [request.form.get(name, "").strip() for name in nutrition_fields]
+            nutrition = None
+            if any(values):
+                if not all(values):
+                    raise ValueError("Enter all four nutrition values, or leave all four blank")
+                try:
+                    nutrition = Nutrition(**dict(zip(nutrition_fields, map(float, values))))
+                except ValueError:
+                    raise ValueError("Nutrition values must be finite, non-negative numbers") from None
+            nutrition_changes["nutrition"] = nutrition
+
         return {
             "title": request.form.get("title", "").strip(),
             "servings": servings,
@@ -156,21 +213,31 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             "tags": {t.strip() for t in request.form.get("tags", "").split(",") if t.strip()},
             "ingredients": ingredients,
             "source_link": request.form.get("source_link", "").strip(),
+            **nutrition_changes,
         }
 
     @bp.route("/recipes/add", methods=["GET", "POST"])
     def add_recipe():
         if request.method == "POST":
-            form_values = _parse_recipe_form()
-            new_recipe = Recipe(id=str(uuid.uuid4())[:8], **form_values)
+            form_values = _parse_recipe_form(include_nutrition=False)
+            imported = request.form.get("_imported") == "1"
             try:
+                form_values = _parse_recipe_form()
+            except ValueError as e:
+                flash(str(e), "danger")
+                return render_template(
+                    "add_recipe.html", draft=form_values, imported=imported
+                )
+
+            try:
+                new_recipe = Recipe(id=str(uuid.uuid4())[:8], **form_values)
                 service.create(new_recipe)
                 return redirect(url_for("main.home"))
             except ValueError as e:
                 return render_template(
                     "add_recipe.html",
                     draft=form_values,
-                    imported=request.form.get("_imported") == "1",
+                    imported=imported,
                     form_error=str(e),
                 ), 400
 
@@ -228,6 +295,132 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 flash(str(e), "danger")
 
         return render_template("add_recipe.html", recipe=recipe)
+
+    @bp.post("/recipes/<recipe_id>/reviews")
+    def submit_recipe_review(recipe_id: str):
+        try:
+            service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+
+        try:
+            rating = int(request.form.get("rating", ""))
+        except ValueError:
+            rating = 0
+
+        try:
+            service.add_review(
+                recipe_id=recipe_id,
+                author_id=session["user_id"],
+                author_name=session.get("user_name", "User"),
+                rating=rating,
+                text=request.form.get("review", ""),
+            )
+            flash("Review submitted successfully.", "success")
+
+        except ValueError as error:
+            flash(str(error), "danger")
+
+        return redirect(
+            url_for("main.recipe_detail", recipe_id=recipe_id)
+        )
+
+
+    @bp.post("/recipes/<recipe_id>/delete")
+    def delete_recipe(recipe_id: str):
+        try:
+            recipe = service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+
+        service.delete(recipe_id)
+        flash(f'Deleted "{recipe.title}".', "success")
+        return redirect(url_for("main.home"))
+
+    def current_user():
+        user_id = session.get("user_id")
+        if not user_id:
+            return None
+        return users.get(user_id)
+
+    def days_with_recipes(user):
+        plan = {day: list(user.meal_plan.get(day, [])) for day, _label in DAYS}
+        days = []
+        changed = False
+        for key, label in DAYS:
+            recipes = []
+            kept = []
+            for recipe_id in plan[key]:
+                try:
+                    recipes.append(service.get(recipe_id))
+                except RecipeNotFound:
+                    changed = True
+                    continue
+                kept.append(recipe_id)
+            if kept != plan[key]:
+                plan[key] = kept
+                changed = True
+            days.append({"key": key, "label": label, "recipes": recipes})
+        if changed:
+            user.meal_plan = plan
+        return days
+
+    @bp.route("/meal-plan", methods=["GET", "POST"])
+    def meal_plan():
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+
+        if request.method == "POST":
+            recipe_id = request.form.get("recipe_id", "")
+            try:
+                service.get(recipe_id.strip())
+            except RecipeNotFound:
+                abort(404)
+            try:
+                users.assign_meal(user.id, request.form.get("day", ""), recipe_id)
+            except ValueError as exc:
+                return render_template(
+                    "meal_plan.html",
+                    user=user,
+                    days=days_with_recipes(user),
+                    recipes=service.list_recipes(),
+                    error=str(exc),
+                ), 400
+            return redirect(url_for("main.meal_plan"))
+
+        return render_template(
+            "meal_plan.html",
+            user=user,
+            days=days_with_recipes(user),
+            recipes=service.list_recipes(),
+        )
+
+    @bp.post("/recipes/<recipe_id>/favorite")
+    def save_favorite(recipe_id: str):
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+        try:
+            service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+        users.save_favorite(user.id, recipe_id)
+        flash("Saved to your favorites.", "success")
+        return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
+
+    @bp.get("/favorites")
+    def favorites():
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+        recipes = []
+        for recipe_id in user.favorites:
+            try:
+                recipes.append(service.get(recipe_id))
+            except RecipeNotFound:
+                continue
+        return render_template("favorites.html", recipes=recipes)
 
     @bp.route("/recipes/import", methods=["GET", "POST"])
     def import_recipe():

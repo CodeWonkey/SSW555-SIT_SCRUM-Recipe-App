@@ -134,3 +134,21 @@ class RecipeImportWebTests(unittest.TestCase):
         self.assertIn(b'value="bread"', response.data)
         self.assertIn(b"Toast the bread.", response.data)
         self.assertEqual(self.service.list_recipes(), [])
+
+    def test_invalid_nutrition_preserves_import_review_and_does_not_save(self):
+        response = self.client.post("/recipes/add", data={
+            "_imported": "1", "title": "My Toast", "servings": "2",
+            "source_link": SOURCE_URL, "tags": "Breakfast",
+            "ingredient_name[]": ["bread"], "ingredient_quantity[]": ["2"],
+            "ingredient_unit[]": ["slices"], "steps": "Toast the bread.",
+            "calories": "invalid", "protein": "10", "carbs": "20", "fat": "5",
+        })
+        self.assertEqual(response.status_code, 200)
+        page = BeautifulSoup(response.data, "html.parser")
+        self.assertEqual(page.h2.text, "Review imported recipe")
+        self.assertIn(b"flash-danger", response.data)
+        self.assertEqual(page.find("input", attrs={"name": "title"})["value"], "My Toast")
+        self.assertEqual(page.find("input", attrs={"name": "source_link"})["value"], SOURCE_URL)
+        self.assertEqual(page.find("input", attrs={"name": "protein"})["value"], "10")
+        self.assertIn(b"Toast the bread.", response.data)
+        self.assertEqual(self.service.list_recipes(), [])

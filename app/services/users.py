@@ -7,6 +7,8 @@ from typing import Iterable
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from app.services.meal_plan import add_recipe, empty_plan
+
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LENGTH = 8
 
@@ -41,6 +43,8 @@ class User:
     dietary_restrictions: set[str] = field(default_factory=set)
     allergies: set[str] = field(default_factory=set)
     other_allergies: set[str] = field(default_factory=set)
+    meal_plan: dict[str, list[str]] = field(default_factory=empty_plan)
+    favorites: list[str] = field(default_factory=list)
 
 
 class UserService:
@@ -162,6 +166,22 @@ class UserService:
                 continue
             extras.setdefault(key, text)
         return selected, set(extras.values())
+
+    def assign_meal(self, user_id: str, day: str, recipe_id: str) -> User:
+        """Assign a saved recipe to one day of this account's weekly plan."""
+        user = self.get(user_id)
+        if user is None:
+            raise ValueError("Account not found")
+        user.meal_plan = add_recipe(user.meal_plan, day, recipe_id)
+        return user
+    
+    def save_favorite(self, user_id: str, recipe_id: str) -> User:
+        user = self.get(user_id)
+        if user is None:
+            raise ValueError("Account not found")
+        if recipe_id not in user.favorites:
+            user.favorites.append(recipe_id)
+        return user
 
     def _store(self, user: User) -> None:
         self._by_email[user.email.casefold()] = user

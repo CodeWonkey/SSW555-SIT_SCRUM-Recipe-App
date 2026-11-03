@@ -12,6 +12,8 @@
     <nav aria-label="Main navigation">
       <a href="{{ url_for('main.home') }}">My recipes</a>
       <a href="{{ url_for('main.shopping_list') }}">Shopping List</a>
+      <a href="{{ url_for('main.favorites') }}">Saved</a>
+      <a href="{{ url_for('main.meal_plan') }}">Meal plan</a>
       {% if session.get("user_name") %}
         <a href="{{ url_for('main.profile') }}">Profile</a>
         <span class="signed-in">{{ session.user_name }}</span>
@@ -24,7 +26,14 @@
       {% endif %}
     </nav>
   </header>
-  <main class="page-shell">{% block content %}{% endblock %}</main>
+  <main class="page-shell">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <p class="flash flash-{{ category }}" role="alert">{{ message }}</p>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
   <footer class="site-footer">CS555 team starter · Sample content only</footer>
 </body>
 </html>

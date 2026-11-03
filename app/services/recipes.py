@@ -1,6 +1,7 @@
 from __future__ import annotations
-
+import re
 from dataclasses import dataclass, field
+from math import isfinite
 from typing import Iterable
 
 
@@ -9,6 +10,38 @@ class Ingredient:
     name: str
     quantity: float
     unit: str = ""
+
+
+@dataclass(frozen=True)
+class Nutrition:
+    """Reported per-serving nutrition; None represents an unknown value."""
+
+    calories: float | None = None
+    protein: float | None = None
+    carbs: float | None = None
+    fat: float | None = None
+
+    def __post_init__(self) -> None:
+        for value in (self.calories, self.protein, self.carbs, self.fat):
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, (int, float))
+                or not isfinite(value) or value < 0
+            ):
+                raise ValueError("Nutrition values must be finite, non-negative numbers")
+
+    @property
+    def available(self) -> bool:
+        return all(value is not None for value in
+                   (self.calories, self.protein, self.carbs, self.fat))
+
+
+@dataclass(frozen=True)
+class Review:
+    author_id: str
+    author_name: str
+    rating: int
+    text: str
+
 
 
 @dataclass
@@ -24,6 +57,8 @@ class Recipe:
     rating: int | None = None
     notes: str = ""
     source_link: str = ""
+    reviews: list[Review] = field(default_factory=list)
+    nutrition: Nutrition | None = None
 
 
 class RecipeNotFound(KeyError):
@@ -46,6 +81,7 @@ class RecipeService:
             raise ValueError("Recipe title cannot be blank")
         if recipe.servings < 1:
             raise ValueError("Servings must be at least 1")
+        self._validate_nutrition(recipe.nutrition)
         self._recipes[recipe.id] = recipe
         return recipe
 
@@ -57,7 +93,7 @@ class RecipeService:
 
     def update(self, recipe_id: str, **changes: object) -> Recipe:
         recipe = self.get(recipe_id)
-        allowed = {"title", "ingredients", "steps", "servings", "tags", "notes", "source_link"}
+        allowed = {"title", "ingredients", "steps", "servings", "tags", "notes", "source_link", "nutrition"}
         unknown = set(changes) - allowed
         if unknown:
             raise ValueError(f"Unsupported recipe fields: {', '.join(sorted(unknown))}")
@@ -65,9 +101,15 @@ class RecipeService:
         servings = changes.get("servings", recipe.servings)
         if not isinstance(title, str) or not title.strip() or not isinstance(servings, int) or servings < 1:
             raise ValueError("Recipe title and servings must be valid")
+        self._validate_nutrition(changes.get("nutrition", recipe.nutrition))
         for name, value in changes.items():
             setattr(recipe, name, value)
         return recipe
+
+    @staticmethod
+    def _validate_nutrition(nutrition: object) -> None:
+        if nutrition is not None and not isinstance(nutrition, Nutrition):
+            raise ValueError("Nutrition must be a Nutrition object or None")
 
     def delete(self, recipe_id: str) -> None:
         self.get(recipe_id)
@@ -108,12 +150,58 @@ class RecipeService:
         recipe.rating = stars
         return recipe
 
-    def scale_ingredients(self, recipe_id: str, target_servings: int) -> list[Ingredient]:
+    def add_review(
+        self,
+        recipe_id: str,
+        author_id: str,
+        author_name: str,
+        rating: int,
+        text: str,
+    ) -> Review:
         recipe = self.get(recipe_id)
-        if target_servings < 1:
-            raise ValueError("Target servings must be at least 1")
-        factor = target_servings / recipe.servings
-        return [Ingredient(i.name, i.quantity * factor, i.unit) for i in recipe.ingredients]
+        clean_text = text.strip()
+
+        if not isinstance(rating, int) or not 1 <= rating <= 5:
+            raise ValueError("Rating must be between 1 and 5.")
+
+        if not clean_text:
+            raise ValueError("Review text cannot be empty.")
+
+        if len(clean_text) > 1000:
+            raise ValueError("Review must be 1000 characters or fewer.")
+
+        flagged_words = {"stupid", "idiot"}
+        words = set(re.findall(r"\b\w+\b", clean_text.casefold()))
+
+        if words & flagged_words:
+            raise ValueError("Review contains flagged language.")
+
+        review = Review(
+            author_id=author_id,
+            author_name=author_name,
+            rating=rating,
+            text=clean_text,
+        )
+
+        recipe.reviews.append(review)
+        return review
+
+
+    def scale_ingredients(self, recipe_id: str, target_servings: int) -> list[Ingredient]:
+        """Return quantities for a serving count without changing the saved recipe."""
+        recipe = self.get(recipe_id)
+        if type(target_servings) is not int or target_servings < 1:
+            raise ValueError("Servings must be a whole number of at least 1")
+        if type(recipe.servings) is not int or recipe.servings < 1:
+            raise ValueError("The saved recipe must have a valid serving count")
+        try:
+            factor = target_servings / recipe.servings
+            scaled = [Ingredient(i.name, i.quantity * factor, i.unit) for i in recipe.ingredients]
+            if not isfinite(factor) or any(not isfinite(i.quantity) for i in scaled):
+                raise ValueError("Scaled ingredient amounts must be finite")
+        except OverflowError:
+            raise ValueError("The serving count is too large to scale this recipe") from None
+        return scaled
 
     def shopping_items(self, recipe_ids: Iterable[str]) -> list[Ingredient]:
         """Combine same-name ingredients when their units match; preserve other units."""
@@ -146,4 +234,3 @@ class RecipeService:
         recipe = self.get(recipe_id)
         recipe.favorite = True
         return recipe
-    

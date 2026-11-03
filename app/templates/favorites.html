@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Saved Recipes · Recipe Journal{% endblock %}
+{% block content %}
+  <section class="intro">
+    <p class="eyebrow">YOUR FAVORITES</p>
+    <h1>Saved Recipes</h1>
+  </section>
+
+  {% if recipes %}
+    <div class="recipe-grid">
+      {% for recipe in recipes %}
+        <article class="recipe-card">
+          <h3><a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">{{ recipe.title }}</a></h3>
+          <p>{{ recipe.ingredients|length }} ingredients · {{ recipe.servings }} servings</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>No saved recipes yet.</h3>
+      <p>Open a recipe and choose Save to Favorites.</p>
+    </div>
+  {% endif %}
+{% endblock %}

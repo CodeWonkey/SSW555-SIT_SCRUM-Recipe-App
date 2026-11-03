@@ -59,4 +59,14 @@ notebooks/                 Data model exploration notebook
 
 ## Current limits
 
-This scaffold has no database, authentication, recipe-detail page, or search UI. Service-level recipe creation and search are present as starting examples; the selected Sprint 1 stories still need the web flows and acceptance tests. Pantry, meal planning, shopping-list generation, and other later stories are listed in the test matrix so the team can agree on their behavior before implementing them.
+Recipe detail pages show calories (kcal), protein, carbs, and fat (grams) per serving.
+Enter these optional values on the add/edit recipe form using a nutrition source;
+enter all four or leave all four blank. Missing or incomplete data displays
+"Nutrition info unavailable". Zero is a valid value. Clear all four fields to remove
+nutrition data. The backend also accepts an optional `Nutrition` object on `Recipe`.
+No additional dependencies or API keys are needed. Nutrition is reported data,
+not automatically calculated from ingredients, and uses the existing in-memory
+storage (data is lost on restart).
+
+The app has no database. Recipe and user data use in-memory services. See the
+story-to-test matrix for implemented behavior and remaining planned features.
