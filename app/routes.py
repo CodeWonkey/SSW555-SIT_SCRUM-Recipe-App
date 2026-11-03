@@ -32,10 +32,32 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             return target
         return url_for("main.home")
 
+    
     @bp.get("/")
     def home():
         query = request.args.get("q", "").strip()
-        return render_template("index.html", recipes=service.search(query), query=query)
+        sort = request.args.get("sort", "newest")
+
+        if sort not in {"newest", "az", "za"}:
+            sort = "newest"
+
+        recipes = service.search(query)
+
+        if sort == "newest":
+            recipes = list(reversed(recipes))
+        else:
+            recipes = sorted(
+                recipes,
+                key=lambda recipe: recipe.title.casefold(),
+                reverse=(sort == "za")
+            )
+
+        return render_template(
+            "index.html",
+            recipes=recipes,
+            query=query,
+            sort=sort
+        )
 
     @bp.route("/register", methods=["GET", "POST"])
     def register():
