@@ -1,6 +1,7 @@
 import uuid
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
+from app.services.meal_plan import DAYS
 from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient
 from app.services.users import ALLERGIES, DIETARY_RESTRICTIONS, UserService
 
@@ -220,5 +221,64 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 flash(str(e), "danger")
 
         return render_template("add_recipe.html", recipe=recipe)
+
+    def current_user():
+        user_id = session.get("user_id")
+        if not user_id:
+            return None
+        return users.get(user_id)
+
+    def days_with_recipes(user):
+        plan = {day: list(user.meal_plan.get(day, [])) for day, _label in DAYS}
+        days = []
+        changed = False
+        for key, label in DAYS:
+            recipes = []
+            kept = []
+            for recipe_id in plan[key]:
+                try:
+                    recipes.append(service.get(recipe_id))
+                except RecipeNotFound:
+                    changed = True
+                    continue
+                kept.append(recipe_id)
+            if kept != plan[key]:
+                plan[key] = kept
+                changed = True
+            days.append({"key": key, "label": label, "recipes": recipes})
+        if changed:
+            user.meal_plan = plan
+        return days
+
+    @bp.route("/meal-plan", methods=["GET", "POST"])
+    def meal_plan():
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+
+        if request.method == "POST":
+            recipe_id = request.form.get("recipe_id", "")
+            try:
+                service.get(recipe_id.strip())
+            except RecipeNotFound:
+                abort(404)
+            try:
+                users.assign_meal(user.id, request.form.get("day", ""), recipe_id)
+            except ValueError as exc:
+                return render_template(
+                    "meal_plan.html",
+                    user=user,
+                    days=days_with_recipes(user),
+                    recipes=service.list_recipes(),
+                    error=str(exc),
+                ), 400
+            return redirect(url_for("main.meal_plan"))
+
+        return render_template(
+            "meal_plan.html",
+            user=user,
+            days=days_with_recipes(user),
+            recipes=service.list_recipes(),
+        )
 
     return bp
