@@ -224,6 +224,20 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
         return render_template("add_recipe.html", recipe=recipe)
     
+    @bp.post("/recipes/<recipe_id>/notes")
+    def save_recipe_notes(recipe_id: str):
+        try:
+            service.update(
+                recipe_id,
+                notes=request.form.get("notes", "").strip()
+            )
+        except RecipeNotFound:
+            abort(404)
+
+        return redirect(
+            url_for("main.recipe_detail", recipe_id=recipe_id)
+        )
+
     @bp.post("/recipes/<recipe_id>/delete")
     def delete_recipe(recipe_id: str):
         try:
