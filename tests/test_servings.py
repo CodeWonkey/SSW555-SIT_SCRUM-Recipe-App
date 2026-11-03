@@ -1,7 +1,7 @@
 import unittest
 
 from app import create_app
-from app.services.recipes import Ingredient, Nutrition, Recipe, RecipeNotFound, RecipeService
+from app.services.recipes import Ingredient, Recipe, RecipeNotFound, RecipeService
 from tests.tests_helpers import sign_in
 
 
@@ -12,7 +12,7 @@ def sample_recipe():
         Ingredient("Yeast", 0.25, "tsp"),
         Ingredient("Eggs", 2),
         Ingredient("Salt", 0, "tsp"),
-    ], ["Mix and bake"], servings=4, nutrition=Nutrition(200, 10, 25, 5))
+    ], ["Mix and bake"], servings=4)
 
 
 class ServingServiceTests(unittest.TestCase):
@@ -34,7 +34,6 @@ class ServingServiceTests(unittest.TestCase):
                 self.assertAlmostEqual(ingredient.quantity, saved.quantity * factor)
         self.assertEqual(self.recipe.ingredients, original)
         self.assertEqual(self.recipe.servings, 4)
-        self.assertEqual(self.recipe.nutrition, Nutrition(200, 10, 25, 5))
 
     def test_invalid_counts_are_rejected(self):
         for count in (0, -1, True, False, 1.5, "8", None, float("inf"), float("nan"), 10**400):
@@ -83,7 +82,7 @@ class ServingWebTests(unittest.TestCase):
         response, html = self.page("?servings=8")
         self.assertEqual(response.status_code, 200)
         for text in ('value="8"', "8 servings", "2 cup Flour", "1.5 cup Water",
-                     "0.5 tsp Yeast", "4 Eggs", "0 tsp Salt", "200 kcal", "Mix and bake"):
+                     "0.5 tsp Yeast", "4 Eggs", "0 tsp Salt", "Mix and bake"):
             self.assertIn(text, html)
         self.assertEqual(self.recipe.servings, 4)
         self.assertEqual(self.recipe.ingredients, sample_recipe().ingredients)

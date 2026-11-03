@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from math import isfinite
 from typing import Iterable
 
 
@@ -155,4 +156,3 @@ class RecipeService:
         recipe = self.get(recipe_id)
         recipe.favorite = True
         return recipe
-    
