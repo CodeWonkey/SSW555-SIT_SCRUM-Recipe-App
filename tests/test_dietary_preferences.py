@@ -1,8 +1,9 @@
-"""US-15: Set dietary restrictions.
+"""US-15: Set dietary restrictions and allergies.
 
 Acceptance criteria covered:
 - a signed-in user can open profile settings
 - selecting restrictions such as vegetarian, gluten-free, and dairy-free saves them
+- selecting common allergies, or typing one that is not listed, saves them
 - saved preferences are stored on the account and displayed on the profile
 - reopening the profile shows the saved choices, and saving again replaces them
 """
@@ -11,7 +12,7 @@ import unittest
 
 from app import create_app
 from app.services.recipes import RecipeService
-from app.services.users import DIETARY_RESTRICTIONS, UserService
+from app.services.users import ALLERGIES, DIETARY_RESTRICTIONS, UserService
 
 
 def register_user(users, *, name="John Doe", email="john@example.com", password="johnnydoe-123"):
@@ -25,6 +26,8 @@ class DietaryPreferenceServiceTests(unittest.TestCase):
 
     def test_new_account_has_no_dietary_restrictions(self):
         self.assertEqual(self.user.dietary_restrictions, set())
+        self.assertEqual(self.user.allergies, set())
+        self.assertEqual(self.user.other_allergies, set())
         self.assertEqual(self.users.get(self.user.id).dietary_restrictions, set())
 
     def test_save_multiple_restrictions(self):
@@ -84,8 +87,65 @@ class DietaryPreferenceServiceTests(unittest.TestCase):
     def test_allowed_choices_match_the_profile_options(self):
         self.assertEqual(
             [value for value, _label in DIETARY_RESTRICTIONS],
-            ["vegetarian", "gluten-free", "dairy-free"],
+            ["vegetarian", "gluten-free", "dairy-free", "vegan"],
         )
+        self.assertEqual(
+            [value for value, _label in ALLERGIES],
+            ["peanuts", "tree-nuts", "shellfish", "eggs", "soy", "sesame"],
+        )
+
+    def test_save_checkbox_and_custom_allergies(self):
+        updated = self.users.update_profile_preferences(
+            self.user.id,
+            ["vegetarian"],
+            ["peanuts"],
+            "  Kiwi, kiwi, Sesame , ",
+        )
+
+        self.assertEqual(updated.dietary_restrictions, {"vegetarian"})
+        self.assertEqual(updated.allergies, {"peanuts", "sesame"})
+        self.assertEqual({item.casefold() for item in updated.other_allergies}, {"kiwi"})
+        reopened = self.users.get(self.user.id)
+        self.assertEqual(reopened.allergies, updated.allergies)
+        self.assertEqual(reopened.other_allergies, updated.other_allergies)
+
+    def test_editing_profile_replaces_allergies_too(self):
+        self.users.update_profile_preferences(self.user.id, [], ["peanuts"], "kiwi")
+        updated = self.users.update_profile_preferences(self.user.id, ["dairy-free"], ["eggs"], "")
+
+        self.assertEqual(updated.dietary_restrictions, {"dairy-free"})
+        self.assertEqual(updated.allergies, {"eggs"})
+        self.assertEqual(updated.other_allergies, set())
+
+    def test_invalid_allergy_changes_nothing(self):
+        self.users.update_profile_preferences(self.user.id, ["vegetarian"], ["peanuts"], "kiwi")
+
+        with self.assertRaises(ValueError):
+            self.users.update_profile_preferences(
+                self.user.id,
+                ["dairy-free"],
+                ["peanuts", "pollen"],
+                "mustard",
+            )
+
+        saved = self.users.get(self.user.id)
+        self.assertEqual(saved.dietary_restrictions, {"vegetarian"})
+        self.assertEqual(saved.allergies, {"peanuts"})
+        self.assertEqual({item.casefold() for item in saved.other_allergies}, {"kiwi"})
+
+    def test_overlong_custom_allergy_is_rejected(self):
+        with self.assertRaises(ValueError):
+            self.users.update_profile_preferences(self.user.id, [], [], "k" * 41)
+        self.assertEqual(self.users.get(self.user.id).other_allergies, set())
+
+    def test_updating_restrictions_leaves_allergies_in_place(self):
+        self.users.update_profile_preferences(self.user.id, [], ["eggs"], "kiwi")
+        self.users.update_dietary_restrictions(self.user.id, ["vegetarian"])
+
+        saved = self.users.get(self.user.id)
+        self.assertEqual(saved.dietary_restrictions, {"vegetarian"})
+        self.assertEqual(saved.allergies, {"eggs"})
+        self.assertEqual({item.casefold() for item in saved.other_allergies}, {"kiwi"})
 
 
 class ProfileDietaryWebTests(unittest.TestCase):
@@ -110,6 +170,7 @@ class ProfileDietaryWebTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("/login", response.headers["Location"])
         self.assertEqual(self.users.get(self.user.id).dietary_restrictions, set())
+        self.assertEqual(self.users.get(self.user.id).allergies, set())
 
     def test_profile_settings_list_dietary_choices(self):
         self.login()
@@ -118,10 +179,11 @@ class ProfileDietaryWebTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"John Doe", response.data)
         self.assertIn(b"Dietary restrictions", response.data)
-        for value, label in DIETARY_RESTRICTIONS:
+        for value, label in (*DIETARY_RESTRICTIONS, *ALLERGIES):
             self.assertIn(f'value="{value}"'.encode(), response.data)
             self.assertIn(label.encode(), response.data)
-        self.assertIn(b"No dietary restrictions saved.", response.data)
+        self.assertIn(b'name="other_allergies"', response.data)
+        self.assertIn(b"No dietary restrictions or allergies saved.", response.data)
 
     def test_saving_restrictions_stores_and_displays_them(self):
         self.login()
@@ -180,8 +242,60 @@ class ProfileDietaryWebTests(unittest.TestCase):
         self.client.post("/profile", data={"dietary_restrictions": "vegetarian"})
 
         response = self.client.post("/profile", data={}, follow_redirects=True)
-        self.assertIn(b"No dietary restrictions saved.", response.data)
+        self.assertIn(b"No dietary restrictions or allergies saved.", response.data)
         self.assertEqual(self.users.get(self.user.id).dietary_restrictions, set())
+        self.assertEqual(self.users.get(self.user.id).allergies, set())
+        self.assertEqual(self.users.get(self.user.id).other_allergies, set())
+
+    def test_saving_allergies_stores_and_displays_them(self):
+        self.login()
+        response = self.client.post(
+            "/profile",
+            data={
+                "dietary_restrictions": "vegetarian",
+                "allergies": "peanuts",
+                "other_allergies": "Kiwi, Sesame",
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        html = response.data.decode()
+        saved = self.saved_preferences(html)
+        self.assertIn("Vegetarian", saved)
+        self.assertIn("Peanuts", saved)
+        self.assertIn("Sesame", saved)
+        self.assertIn("Kiwi", saved)
+        self.assertNotIn("Eggs", saved)
+        self.assertIn('value="peanuts" checked', html)
+        self.assertIn('value="sesame" checked', html)
+        self.assertNotIn('value="eggs" checked', html)
+        self.assertIn('value="Kiwi"', html)
+        saved_user = self.users.get(self.user.id)
+        self.assertEqual(saved_user.allergies, {"peanuts", "sesame"})
+        self.assertEqual({item.casefold() for item in saved_user.other_allergies}, {"kiwi"})
+
+    def test_unknown_allergy_is_not_saved(self):
+        self.login()
+        self.client.post(
+            "/profile",
+            data={"dietary_restrictions": "vegetarian", "allergies": "peanuts", "other_allergies": "kiwi"},
+        )
+
+        response = self.client.post(
+            "/profile",
+            data={
+                "dietary_restrictions": "dairy-free",
+                "allergies": ["peanuts", "pollen"],
+                "other_allergies": "mustard",
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"Unsupported allergy", response.data)
+        saved_user = self.users.get(self.user.id)
+        self.assertEqual(saved_user.dietary_restrictions, {"vegetarian"})
+        self.assertEqual(saved_user.allergies, {"peanuts"})
+        self.assertEqual({item.casefold() for item in saved_user.other_allergies}, {"kiwi"})
 
     def test_unknown_restriction_is_not_saved(self):
         self.login()

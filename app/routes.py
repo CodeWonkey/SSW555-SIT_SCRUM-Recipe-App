@@ -2,7 +2,17 @@ import uuid
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
 from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient
-from app.services.users import UserService
+from app.services.users import ALLERGIES, DIETARY_RESTRICTIONS, UserService
+
+
+def _profile_context(user, error: str | None = None) -> dict:
+    return {
+        "user": user,
+        "choices": DIETARY_RESTRICTIONS,
+        "allergy_choices": ALLERGIES,
+        "other_allergies": ", ".join(sorted(user.other_allergies, key=str.casefold)),
+        "error": error,
+    }
 
 
 def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
@@ -66,6 +76,35 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
     def logout():
         session.clear()
         return redirect(url_for("main.home"))
+
+    def current_user():
+        user_id = session.get("user_id")
+        if not user_id:
+            return None
+        return users.get(user_id)
+
+    @bp.route("/profile", methods=["GET", "POST"])
+    def profile():
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+
+        if request.method == "POST":
+            try:
+                user = users.update_profile_preferences(
+                    user.id,
+                    request.form.getlist("dietary_restrictions"),
+                    request.form.getlist("allergies"),
+                    request.form.get("other_allergies", ""),
+                )
+            except ValueError as exc:
+                return render_template(
+                    "profile.html",
+                    **_profile_context(users.get(user.id), error=str(exc)),
+                ), 400
+            return redirect(url_for("main.profile"))
+
+        return render_template("profile.html", **_profile_context(user))
 
     @bp.get("/recipes/<recipe_id>")
     def recipe_detail(recipe_id: str):

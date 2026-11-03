@@ -67,3 +67,8 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
   display: inline;
   margin: 0;
 }
+
+.checkbox-list { display: grid; gap: 10px; }
+.checkbox-list label { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+.account-form .checkbox-list input { width: 1.15rem; min-height: 1.15rem; margin: 0; }
+.saved-preferences { margin: 8px 0 0; padding-left: 1.2rem; }
