@@ -44,6 +44,7 @@ class User:
     allergies: set[str] = field(default_factory=set)
     other_allergies: set[str] = field(default_factory=set)
     meal_plan: dict[str, list[str]] = field(default_factory=empty_plan)
+    favorites: list[str] = field(default_factory=list)
 
 
 class UserService:
@@ -172,6 +173,14 @@ class UserService:
         if user is None:
             raise ValueError("Account not found")
         user.meal_plan = add_recipe(user.meal_plan, day, recipe_id)
+        return user
+    
+    def save_favorite(self, user_id: str, recipe_id: str) -> User:
+        user = self.get(user_id)
+        if user is None:
+            raise ValueError("Account not found")
+        if recipe_id not in user.favorites:
+            user.favorites.append(recipe_id)
         return user
 
     def _store(self, user: User) -> None:

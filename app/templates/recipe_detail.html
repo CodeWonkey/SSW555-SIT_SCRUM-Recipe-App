@@ -31,6 +31,13 @@
 
   <form method="POST" action="{{ url_for('main.add_to_shopping_list', recipe_id=recipe.id) }}">
     <button type="submit" class="button">Add to Shopping List</button>
+    {% if is_saved %}
+    <button type="button" class="button button-outline" disabled>Saved</button>
+  {% else %}
+    <form method="POST" action="{{ url_for('main.save_favorite', recipe_id=recipe.id) }}">
+      <button type="submit" class="button button-outline">Save to Favorites</button>
+    </form>
+  {% endif %}
   </form>
 
   <section>

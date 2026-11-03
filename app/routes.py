@@ -127,7 +127,9 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         except RecipeNotFound:
             abort(404)
            
-        return render_template("recipe_detail.html", recipe=recipe)
+        user = current_user()
+        is_saved = user is not None and recipe_id in user.favorites
+        return render_template("recipe_detail.html", recipe=recipe, is_saved=is_saved)
 
     def _parse_recipe_form() -> dict:
         try:
@@ -292,4 +294,31 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             recipes=service.list_recipes(),
         )
 
+    @bp.post("/recipes/<recipe_id>/favorite")
+    def save_favorite(recipe_id: str):
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+        try:
+            service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+        users.save_favorite(user.id, recipe_id)
+        flash("Saved to your favorites.", "success")
+        return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
+
+    @bp.get("/favorites")
+    def favorites():
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+        recipes = []
+        for recipe_id in user.favorites:
+            try:
+                recipes.append(service.get(recipe_id))
+            except RecipeNotFound:
+                continue
+        return render_template("favorites.html", recipes=recipes)
+
+    
     return bp
