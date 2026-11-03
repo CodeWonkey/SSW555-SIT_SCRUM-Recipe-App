@@ -53,4 +53,8 @@
     <a class="button button-outline" href="{{ url_for('main.edit_recipe', recipe_id=recipe.id) }}">Edit recipe</a>
     <a href="{{ url_for('main.home') }}">Back to recipes</a>
   </p>
+  <form method="POST" action="{{ url_for('main.delete_recipe', recipe_id=recipe.id) }}"
+        onsubmit="return confirm('Delete this recipe? This cannot be undone.');">
+    <button type="submit" class="button button-danger">Delete recipe</button>
+  </form>
 {% endblock %}
