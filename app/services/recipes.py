@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from math import isfinite
 from typing import Iterable
 
 
@@ -9,6 +10,29 @@ class Ingredient:
     name: str
     quantity: float
     unit: str = ""
+
+
+@dataclass(frozen=True)
+class Nutrition:
+    """Reported per-serving nutrition; None represents an unknown value."""
+
+    calories: float | None = None
+    protein: float | None = None
+    carbs: float | None = None
+    fat: float | None = None
+
+    def __post_init__(self) -> None:
+        for value in (self.calories, self.protein, self.carbs, self.fat):
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, (int, float))
+                or not isfinite(value) or value < 0
+            ):
+                raise ValueError("Nutrition values must be finite, non-negative numbers")
+
+    @property
+    def available(self) -> bool:
+        return all(value is not None for value in
+                   (self.calories, self.protein, self.carbs, self.fat))
 
 
 @dataclass
@@ -24,6 +48,7 @@ class Recipe:
     rating: int | None = None
     notes: str = ""
     source_link: str = ""
+    nutrition: Nutrition | None = None
 
 
 class RecipeNotFound(KeyError):
@@ -46,6 +71,7 @@ class RecipeService:
             raise ValueError("Recipe title cannot be blank")
         if recipe.servings < 1:
             raise ValueError("Servings must be at least 1")
+        self._validate_nutrition(recipe.nutrition)
         self._recipes[recipe.id] = recipe
         return recipe
 
@@ -57,7 +83,7 @@ class RecipeService:
 
     def update(self, recipe_id: str, **changes: object) -> Recipe:
         recipe = self.get(recipe_id)
-        allowed = {"title", "ingredients", "steps", "servings", "tags", "notes", "source_link"}
+        allowed = {"title", "ingredients", "steps", "servings", "tags", "notes", "source_link", "nutrition"}
         unknown = set(changes) - allowed
         if unknown:
             raise ValueError(f"Unsupported recipe fields: {', '.join(sorted(unknown))}")
@@ -65,9 +91,15 @@ class RecipeService:
         servings = changes.get("servings", recipe.servings)
         if not isinstance(title, str) or not title.strip() or not isinstance(servings, int) or servings < 1:
             raise ValueError("Recipe title and servings must be valid")
+        self._validate_nutrition(changes.get("nutrition", recipe.nutrition))
         for name, value in changes.items():
             setattr(recipe, name, value)
         return recipe
+
+    @staticmethod
+    def _validate_nutrition(nutrition: object) -> None:
+        if nutrition is not None and not isinstance(nutrition, Nutrition):
+            raise ValueError("Nutrition must be a Nutrition object or None")
 
     def delete(self, recipe_id: str) -> None:
         self.get(recipe_id)
@@ -146,4 +178,3 @@ class RecipeService:
         recipe = self.get(recipe_id)
         recipe.favorite = True
         return recipe
-    
