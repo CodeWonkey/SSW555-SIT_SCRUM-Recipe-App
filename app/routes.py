@@ -2,7 +2,7 @@ import uuid
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
 from app.services.meal_plan import DAYS
-from app.services.recipes import RecipeNotFound, RecipeService, Recipe, Ingredient
+from app.services.recipes import SORT_OPTIONS, RecipeNotFound, RecipeService, Recipe, Ingredient
 from app.services.users import ALLERGIES, DIETARY_RESTRICTIONS, UserService
 
 
@@ -35,7 +35,13 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
     @bp.get("/")
     def home():
         query = request.args.get("q", "").strip()
-        return render_template("index.html", recipes=service.search(query), query=query)
+        sort = request.args.get("sort", "newest")
+        if sort not in SORT_OPTIONS:
+            sort = "newest"
+        return render_template(
+            "index.html", recipes=service.search(query, sort=sort), query=query,
+            sort=sort, sort_options=SORT_OPTIONS,
+        )
 
     @bp.route("/register", methods=["GET", "POST"])
     def register():

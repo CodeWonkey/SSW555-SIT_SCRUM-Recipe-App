@@ -21,10 +21,18 @@
       <label for="recipe-search">Search by recipe name or ingredient</label>
       <input type="search" id="recipe-search" name="q" value="{{ query }}" placeholder="e.g. pasta or tomatoes">
     </div>
+    <div class="form-field">
+      <label for="recipe-sort">Sort recipes</label>
+      <select id="recipe-sort" name="sort">
+        {% for value, label in sort_options.items() %}
+          <option value="{{ value }}"{% if sort == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <div class="form-actions">
-      <button type="submit" class="button">Search</button>
+      <button type="submit" class="button">Apply search &amp; sort</button>
       {% if query %}
-        <a class="button button-outline" href="{{ url_for('main.home') }}">Clear search</a>
+        <a class="button button-outline" href="{{ url_for('main.home', sort=sort) }}">Clear search</a>
       {% endif %}
     </div>
   </form>
@@ -52,7 +60,7 @@
       <p>No recipes match “{{ query }}”. Try another recipe name or ingredient.</p>
       {% else %}
       <h3>Your recipe box is ready.</h3>
-      <p>The first story to build is adding a recipe. This page is starter UI for the team to extend.</p>
+      <p>Add a recipe to start your collection.</p>
       {% endif %}
     </div>
   {% endif %}

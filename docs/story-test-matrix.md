@@ -12,7 +12,7 @@ These entries use the current dependency-based Trello numbering. Some behaviors 
 | US-06 Log in to an existing account | Accept valid credentials; reject invalid ones; verify session boundaries. | Planned |
 | US-07 Save a recipe from a social media post | Save a source URL; render it as a safe clickable link; handle malformed URLs. | Planned |
 | US-08 Import a recipe from a website | Import supported fields; allow review before saving; handle invalid/unsupported URLs. | Planned |
-| US-09 Sort saved recipes | Sort alphabetically and newest-first; verify sorting does not mutate recipe data. | Planned |
+| US-09 Sort saved recipes | Sort alphabetically (A–Z/Z–A) and by creation date (newest/oldest); combine with search; handle invalid options; verify sorting does not mutate recipe data. | Service and web tests (`tests/test_sort_recipes.py`) |
 | US-10 Edit a recipe | Update allowed fields; persist the changed detail; reject unknown fields. | Service tests |
 | US-11 Delete a recipe | Delete an existing recipe; show an empty/missing state after deletion. | Service tests |
 | US-12 Save Recipe to Favorites | Save once; show “Saved” state on repeat; retain favorite state on reload. | Service tests |

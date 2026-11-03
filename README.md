@@ -38,6 +38,13 @@ python -m pytest
 
 ## Project map
 
+US-09 sorting is available on **My recipes**: choose **Sort recipes**, then select
+**Apply search & sort**. Options include newest first (the default), oldest first,
+and alphabetical A–Z or Z–A. Sorting also applies to search results; the URL retains
+the search and sort choices on reload, and clearing search preserves the chosen sort.
+Creation timestamps use UTC and do not change when recipes are edited. This feature
+uses the existing Flask dependency and in-memory storage; no migration is required.
+
 ```text
 app/                       Flask app and recipe domain service
 app/services/recipes.py    In-memory recipe operations

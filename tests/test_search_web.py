@@ -58,7 +58,7 @@ class SearchWebTests(unittest.TestCase):
                 response = self.client.get("/", query_string={"q": query})
                 self.assertEqual(response.status_code, 200)
                 self.assertIn(count.encode(), response.data)
-                self.assertIn(b'href="/">Clear search</a>', response.data)
+                self.assertIn(b'href="/?sort=newest">Clear search</a>', response.data)
 
     def test_blank_query_and_cleared_search_show_all_recipes(self):
         self.client.get("/", query_string={"q": "pasta"})

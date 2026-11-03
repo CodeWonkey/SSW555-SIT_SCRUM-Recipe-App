@@ -1,7 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Iterable
+
+
+SORT_OPTIONS = {
+    "newest": "Newest first",
+    "oldest": "Oldest first",
+    "alphabetical": "Alphabetical (A–Z)",
+    "alphabetical_desc": "Alphabetical (Z–A)",
+}
 
 
 @dataclass(frozen=True)
@@ -24,6 +33,7 @@ class Recipe:
     rating: int | None = None
     notes: str = ""
     source_link: str = ""
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class RecipeNotFound(KeyError):
@@ -36,8 +46,27 @@ class RecipeService:
     def __init__(self, recipes: Iterable[Recipe] = ()) -> None:
         self._recipes = {recipe.id: recipe for recipe in recipes}
 
-    def list_recipes(self) -> list[Recipe]:
-        return list(self._recipes.values())
+    def list_recipes(self, *, sort: str | None = None) -> list[Recipe]:
+        recipes = list(self._recipes.values())
+        return self.sort_recipes(recipes, sort) if sort is not None else recipes
+
+    def sort_recipes(self, recipes: Iterable[Recipe], sort: str) -> list[Recipe]:
+        """Return a sorted copy, leaving recipe data and collection order intact.
+
+        Equal keys retain their input order. Naive imported timestamps are treated
+        as UTC, matching the timezone used for newly created recipes.
+        """
+        if sort not in SORT_OPTIONS:
+            raise ValueError("Unsupported recipe sort option")
+        if sort in {"alphabetical", "alphabetical_desc"}:
+            return sorted(recipes, key=lambda recipe: recipe.title.strip().casefold(),
+                          reverse=sort == "alphabetical_desc")
+        return sorted(
+            recipes,
+            key=lambda recipe: (recipe.created_at.replace(tzinfo=timezone.utc)
+                                if recipe.created_at.tzinfo is None else recipe.created_at),
+            reverse=sort == "newest",
+        )
 
     def create(self, recipe: Recipe) -> Recipe:
         if recipe.id in self._recipes:
@@ -73,15 +102,16 @@ class RecipeService:
         self.get(recipe_id)
         del self._recipes[recipe_id]
 
-    def search(self, query: str) -> list[Recipe]:
+    def search(self, query: str, *, sort: str | None = None) -> list[Recipe]:
         needle = query.strip().casefold()
         if not needle:
-            return self.list_recipes()
-        return [r for r in self._recipes.values()
+            return self.list_recipes(sort=sort)
+        recipes = [r for r in self._recipes.values()
                 if needle in r.title.casefold()
                 or any(needle in item.name.casefold() for item in r.ingredients)
                 or any(needle in step.casefold() for step in r.steps)
                 or any(needle in tag.casefold() for tag in r.tags)]
+        return self.sort_recipes(recipes, sort) if sort is not None else recipes
 
     def filter(self, *, tag: str | None = None, favorites_only: bool = False) -> list[Recipe]:
         return [r for r in self._recipes.values()
@@ -146,4 +176,4 @@ class RecipeService:
         recipe = self.get(recipe_id)
         recipe.favorite = True
         return recipe
-    
+
