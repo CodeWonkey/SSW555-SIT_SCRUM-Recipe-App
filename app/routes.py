@@ -1,6 +1,7 @@
 import uuid
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
+from app.services.measurement_conversion import convert_to_metric
 from app.services.recipe_fetch import fetch_recipe_html
 from app.services.recipe_import import build_recipe_draft, extract_recipe
 from app.services.recipes import RecipeNotFound, RecipeService, Recipe
@@ -64,27 +65,53 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             recipe = service.get(recipe_id)
         except RecipeNotFound:
             abort(404)
-           
+
         user = current_user()
         is_saved = user is not None and recipe_id in user.favorites
+
         target_servings = recipe.servings
         ingredients = recipe.ingredients
         error = None
+
+        # US-20
+        measurement_system = request.args.get("units", "original")
+
+        if measurement_system not in {"original", "metric"}:
+            measurement_system = "original"
+
         try:
+            # US-17
             if "servings" in request.args:
                 try:
                     target_servings = int(request.args["servings"])
                 except ValueError:
-                    raise ValueError("Servings must be a whole number of at least 1") from None
-            ingredients = service.scale_ingredients(recipe_id, target_servings)
+                    raise ValueError(
+                        "Servings must be a whole number of at least 1"
+                    ) from None
+
+            ingredients = service.scale_ingredients(
+                recipe_id,
+                target_servings,
+            )
+
+            # US-20
+            if measurement_system == "metric":
+                ingredients = convert_to_metric(ingredients)
+
         except ValueError as exc:
             error = str(exc)
-            # Keep the original recipe readable when a requested count is invalid.
             target_servings = recipe.servings
+            ingredients = recipe.ingredients
+            measurement_system = "original"
+
         return render_template(
-            "recipe_detail.html", recipe=recipe, is_saved=is_saved,
-            ingredients=ingredients, target_servings=target_servings,
+            "recipe_detail.html",
+            recipe=recipe,
+            is_saved=is_saved,
+            ingredients=ingredients,
+            target_servings=target_servings,
             servings_error=error,
+            measurement_system=measurement_system,
         ), 400 if error else 200
 
     @bp.route("/recipes/add", methods=["GET", "POST"])
