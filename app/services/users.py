@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from typing import Iterable
 
@@ -33,6 +34,13 @@ _ALLOWED_ALLERGIES = {value for value, _label in ALLERGIES}
 _ALLERGY_LABELS = {label.casefold(): value for value, label in ALLERGIES}
 _MAX_ALLERGY_LENGTH = 40
 
+@dataclass(frozen=True)
+class CookingEvent:
+    """A single occasion when a user cooked a recipe."""
+
+    recipe_id: str
+    cooked_at: datetime
+
 
 @dataclass
 class User:
@@ -45,6 +53,8 @@ class User:
     other_allergies: set[str] = field(default_factory=set)
     meal_plan: dict[str, list[str]] = field(default_factory=empty_plan)
     favorites: list[str] = field(default_factory=list)
+    cooking_history: list[CookingEvent] = field(default_factory=list)
+
 
 
 class UserService:
@@ -182,6 +192,45 @@ class UserService:
         if recipe_id not in user.favorites:
             user.favorites.append(recipe_id)
         return user
+
+    def mark_recipe_cooked(
+        self,
+        user_id: str,
+        recipe_id: str,
+        cooked_at: datetime | None = None,
+    ) -> CookingEvent:
+        """Record one cooking event for a user."""
+        user = self.get(user_id)
+        if user is None:
+            raise ValueError("Account not found")
+
+        if not recipe_id.strip():
+            raise ValueError("Recipe ID is required")
+
+        timestamp = cooked_at if cooked_at is not None else datetime.now(timezone.utc)
+
+        if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+            raise ValueError("Cooking timestamp must include a timezone")
+
+        event = CookingEvent(
+            recipe_id=recipe_id,
+            cooked_at=timestamp,
+        )
+
+        user.cooking_history.append(event)
+        return event
+
+    def get_cooking_history(self, user_id: str) -> list[CookingEvent]:
+        """Return cooking events in reverse chronological order."""
+        user = self.get(user_id)
+        if user is None:
+            raise ValueError("Account not found")
+
+        return sorted(
+            user.cooking_history,
+            key=lambda event: event.cooked_at,
+            reverse=True,
+        )
 
     def _store(self, user: User) -> None:
         self._by_email[user.email.casefold()] = user

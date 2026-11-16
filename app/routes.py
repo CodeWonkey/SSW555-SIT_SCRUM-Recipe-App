@@ -396,6 +396,50 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             recipes=service.list_recipes(),
         )
 
+    @bp.post("/recipes/<recipe_id>/cooked")
+    def mark_recipe_cooked(recipe_id: str):
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+
+        try:
+            service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+
+        users.mark_recipe_cooked(user.id, recipe_id)
+
+        flash("Recipe marked as cooked.", "success")
+
+        return redirect(
+            url_for("main.cooking_history")
+        )
+
+    @bp.get("/cooking-history")
+    def cooking_history():
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+
+        events = users.get_cooking_history(user.id)
+        history = []
+
+        for event in events:
+            try:
+                recipe = service.get(event.recipe_id)
+            except RecipeNotFound:
+                continue
+
+            history.append({
+                "recipe": recipe,
+                "cooked_at": event.cooked_at,
+            })
+
+        return render_template(
+            "cooking_history.html",
+            history=history,
+        )
+
     @bp.post("/recipes/<recipe_id>/favorite")
     def save_favorite(recipe_id: str):
         user = current_user()
