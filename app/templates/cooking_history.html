@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Cooking History · Recipe Journal{% endblock %}
+
+{% block content %}
+  <section class="intro">
+    <p class="eyebrow">RECENTLY COOKED</p>
+    <h1>Cooking History</h1>
+    <p>Recipes you've recently cooked, newest first.</p>
+  </section>
+
+  <section>
+    {% if history %}
+      <ul>
+        {% for entry in history %}
+          <li>
+            <a href="{{ url_for('main.recipe_detail', recipe_id=entry.recipe.id) }}">
+              {{ entry.recipe.title }}
+            </a>
+            <span>
+              — Cooked on
+              {{ entry.cooked_at.strftime('%B %d, %Y at %I:%M %p') }} UTC
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>You haven't marked any recipes as cooked yet.</p>
+      <a href="{{ url_for('main.home') }}" class="button">
+        Browse Recipes
+      </a>
+    {% endif %}
+  </section>
+{% endblock %}
