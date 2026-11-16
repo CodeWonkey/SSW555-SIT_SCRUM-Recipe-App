@@ -62,6 +62,9 @@
             </a>
           </h3>
             <p>{{ recipe.ingredients|length }} ingredients · {{ recipe.servings }} servings</p>
+            {% if recipe.id in unsuitable_ids %}
+              <p class="diet-warning">May not be suitable</p>
+            {% endif %}
           </article>
         {% endfor %}
     </div>

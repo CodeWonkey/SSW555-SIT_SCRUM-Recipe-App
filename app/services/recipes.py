@@ -59,6 +59,7 @@ class Recipe:
     source_link: str = ""
     reviews: list[Review] = field(default_factory=list)
     nutrition: Nutrition | None = None
+    diet_labels: set[str] = field(default_factory=set)
 
 
 class RecipeNotFound(KeyError):
@@ -93,7 +94,10 @@ class RecipeService:
 
     def update(self, recipe_id: str, **changes: object) -> Recipe:
         recipe = self.get(recipe_id)
-        allowed = {"title", "ingredients", "steps", "servings", "tags", "notes", "source_link", "nutrition"}
+        allowed = {
+            "title", "ingredients", "steps", "servings", "tags",
+            "notes", "source_link", "nutrition", "diet_labels",
+        }
         unknown = set(changes) - allowed
         if unknown:
             raise ValueError(f"Unsupported recipe fields: {', '.join(sorted(unknown))}")

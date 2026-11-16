@@ -1,6 +1,7 @@
 import uuid
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
+from app.services.diet_labels import clean_diet_labels, diet_label_choices, is_unsuitable
 from app.services.meal_plan import DAYS
 from app.services.recipe_fetch import fetch_recipe_html
 from app.services.recipe_import import build_recipe_draft, extract_recipe
@@ -53,11 +54,15 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 reverse=(sort == "za")
             )
 
+        viewer = current_user()
         return render_template(
             "index.html",
             recipes=recipes,
             query=query,
-            sort=sort
+            sort=sort,
+            unsuitable_ids={
+                recipe.id for recipe in recipes if is_unsuitable(recipe, viewer)
+            },
         )
 
     @bp.route("/register", methods=["GET", "POST"])
@@ -170,9 +175,13 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             "recipe_detail.html", recipe=recipe, is_saved=is_saved,
             ingredients=ingredients, target_servings=target_servings,
             servings_error=error,
+            unsuitable=is_unsuitable(recipe, user),
         ), 400 if error else 200
 
-    def _parse_recipe_form(*, include_nutrition: bool = True) -> dict:
+    def _label_choices(existing=()):
+        return diet_label_choices(current_user(), existing)
+
+    def _parse_recipe_form(*, include_nutrition: bool = True, existing_labels=()) -> dict:
         try:
             servings = int(request.form.get("servings", "1"))
         except ValueError:
@@ -213,6 +222,11 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             "tags": {t.strip() for t in request.form.get("tags", "").split(",") if t.strip()},
             "ingredients": ingredients,
             "source_link": request.form.get("source_link", "").strip(),
+            "diet_labels": clean_diet_labels(
+                request.form.getlist("diet_labels"),
+                current_user(),
+                existing_labels,
+            ),
             **nutrition_changes,
         }
 
@@ -226,7 +240,10 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             except ValueError as e:
                 flash(str(e), "danger")
                 return render_template(
-                    "add_recipe.html", draft=form_values, imported=imported
+                    "add_recipe.html",
+                    draft=form_values,
+                    imported=imported,
+                    diet_label_choices=_label_choices(),
                 )
 
             try:
@@ -239,9 +256,13 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                     draft=form_values,
                     imported=imported,
                     form_error=str(e),
+                    diet_label_choices=_label_choices(),
                 ), 400
 
-        return render_template("add_recipe.html")
+        return render_template(
+            "add_recipe.html",
+            diet_label_choices=_label_choices(),
+        )
 
     @bp.post("/recipes/<recipe_id>/shopping-list")
     def add_to_shopping_list(recipe_id: str):
@@ -289,12 +310,19 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
         if request.method == "POST":
             try:
-                service.update(recipe_id, **_parse_recipe_form())
+                service.update(
+                    recipe_id,
+                    **_parse_recipe_form(existing_labels=recipe.diet_labels),
+                )
                 return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
             except ValueError as e:
                 flash(str(e), "danger")
 
-        return render_template("add_recipe.html", recipe=recipe)
+        return render_template(
+            "add_recipe.html",
+            recipe=recipe,
+            diet_label_choices=_label_choices(recipe.diet_labels),
+        )
 
     @bp.post("/recipes/<recipe_id>/reviews")
     def submit_recipe_review(recipe_id: str):
@@ -477,7 +505,10 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 html = fetch_recipe_html(source_url)
                 draft = build_recipe_draft(extract_recipe(html), source_url)
                 return render_template(
-                    "add_recipe.html", draft=draft, imported=True
+                    "add_recipe.html",
+                    draft=draft,
+                    imported=True,
+                    diet_label_choices=_label_choices(),
                 )
             except ValueError as exc:
                 error = str(exc)
