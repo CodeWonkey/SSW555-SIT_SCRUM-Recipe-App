@@ -212,6 +212,26 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         return redirect(
             url_for("main.recipe_detail", recipe_id=recipe_id)
         )
+    
+    @bp.post("/recipes/<recipe_id>/rate")
+    def rate_recipe(recipe_id: str):
+        try:
+            service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+
+        try:
+            stars = int(request.form.get("stars", ""))
+        except ValueError:
+            stars = 0
+
+        try:
+            service.rate(recipe_id, stars)
+            flash(f"Rated recipe {stars}/5 stars.", "success")
+        except ValueError as error:
+            flash(str(error), "danger")
+
+        return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
 
     @bp.post("/recipes/<recipe_id>/delete")
     def delete_recipe(recipe_id: str):
