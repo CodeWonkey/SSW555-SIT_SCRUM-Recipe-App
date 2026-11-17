@@ -1,250 +1,182 @@
-import uuid
+from __future__ import annotations
+import re
+from math import isfinite
+from typing import Iterable
 
-from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
-from app.services.diet_labels import clean_diet_labels, diet_label_choices, is_unsuitable
-from app.services.measurement_conversion import convert_to_metric
-from app.services.recipe_fetch import fetch_recipe_html
-from app.services.recipe_import import build_recipe_draft, extract_recipe
-from app.services.recipes import RecipeNotFound, RecipeService, Recipe
-from app.services.users import UserService
-from app.web.accounts import register_account_routes
-from app.web.forms import parse_recipe_form
-from app.web.inventory import register_inventory_routes
-from app.web.planning import register_planning_routes
+# Re-export models to preserve existing service imports.
+from app.models import Ingredient, Nutrition, Recipe, Review
 
 
-def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
-    bp = Blueprint("main", __name__)
+class RecipeNotFound(KeyError):
+    """Raised when a requested recipe ID is not in the service."""
 
-    def current_user():
-        user_id = session.get("user_id")
-        if not user_id:
-            return None
-        return users.get(user_id)
 
-    register_account_routes(bp, users, current_user)
-    register_inventory_routes(bp, service, users, current_user)
-    register_planning_routes(bp, service, users, current_user)
+class RecipeService:
+    """Small in-memory service to give the team a testable starting point."""
 
-    PUBLIC_ENDPOINTS = {"main.login", "main.register"}
+    def __init__(self, recipes: Iterable[Recipe] = ()) -> None:
+        self._recipes = {recipe.id: recipe for recipe in recipes}
 
-    @bp.before_request
-    def require_login():
-        if request.endpoint in PUBLIC_ENDPOINTS or "user_id" in session:
-            return None
-        return redirect(url_for("main.login", next=request.full_path.rstrip("?")))
+    def list_recipes(self) -> list[Recipe]:
+        return list(self._recipes.values())
 
-    @bp.get("/")
-    def home():
-        query = request.args.get("q", "").strip()
-        sort = request.args.get("sort", "newest")
+    def create(self, recipe: Recipe) -> Recipe:
+        if recipe.id in self._recipes:
+            raise ValueError(f"Recipe ID already exists: {recipe.id}")
+        if not recipe.title.strip():
+            raise ValueError("Recipe title cannot be blank")
+        if recipe.servings < 1:
+            raise ValueError("Servings must be at least 1")
+        self._validate_nutrition(recipe.nutrition)
+        self._recipes[recipe.id] = recipe
+        return recipe
 
-        if sort not in {"newest", "az", "za"}:
-            sort = "newest"
+    def get(self, recipe_id: str) -> Recipe:
+        try:
+            return self._recipes[recipe_id]
+        except KeyError as exc:
+            raise RecipeNotFound(recipe_id) from exc
 
-        recipes = service.search(query)
+    def update(self, recipe_id: str, **changes: object) -> Recipe:
+        recipe = self.get(recipe_id)
+        allowed = {
+            "title", "ingredients", "steps", "servings", "tags",
+            "notes", "source_link", "nutrition", "diet_labels",
+        }
+        unknown = set(changes) - allowed
+        if unknown:
+            raise ValueError(f"Unsupported recipe fields: {', '.join(sorted(unknown))}")
+        title = changes.get("title", recipe.title)
+        servings = changes.get("servings", recipe.servings)
+        if not isinstance(title, str) or not title.strip() or not isinstance(servings, int) or servings < 1:
+            raise ValueError("Recipe title and servings must be valid")
+        self._validate_nutrition(changes.get("nutrition", recipe.nutrition))
+        for name, value in changes.items():
+            setattr(recipe, name, value)
+        return recipe
 
-        if sort == "newest":
-            recipes = list(reversed(recipes))
-        else:
-            recipes = sorted(
-                recipes,
-                key=lambda recipe: recipe.title.casefold(),
-                reverse=(sort == "za")
-            )
+    @staticmethod
+    def _validate_nutrition(nutrition: object) -> None:
+        if nutrition is not None and not isinstance(nutrition, Nutrition):
+            raise ValueError("Nutrition must be a Nutrition object or None")
 
-        viewer = current_user()
-        return render_template(
-            "index.html",
-            recipes=recipes,
-            query=query,
-            sort=sort,
-            unsuitable_ids={
-                recipe.id for recipe in recipes if is_unsuitable(recipe, viewer)
-            },
+    def delete(self, recipe_id: str) -> None:
+        self.get(recipe_id)
+        del self._recipes[recipe_id]
+
+    def search(self, query: str) -> list[Recipe]:
+        needle = query.strip().casefold()
+        if not needle:
+            return self.list_recipes()
+        return [r for r in self._recipes.values()
+                if needle in r.title.casefold()
+                or any(needle in item.name.casefold() for item in r.ingredients)
+                or any(needle in step.casefold() for step in r.steps)
+                or any(needle in tag.casefold() for tag in r.tags)]
+
+    def filter(self, *, tag: str | None = None, favorites_only: bool = False) -> list[Recipe]:
+        return [r for r in self._recipes.values()
+                if (tag is None or tag.casefold() in {t.casefold() for t in r.tags})
+                and (not favorites_only or r.favorite)]
+
+    def set_favorite(self, recipe_id: str, favorite: bool = True) -> Recipe:
+        recipe = self.get(recipe_id)
+        recipe.favorite = favorite
+        return recipe
+
+    def set_cook_later(self, recipe_id: str, cook_later: bool = True) -> Recipe:
+        recipe = self.get(recipe_id)
+        recipe.cook_later = cook_later
+        return recipe
+
+    def cook_later_list(self) -> list[Recipe]:
+        return [r for r in self._recipes.values() if r.cook_later]
+
+    def rate(self, recipe_id: str, stars: int) -> Recipe:
+        if not 1 <= stars <= 5:
+            raise ValueError("Rating must be between 1 and 5 stars")
+        recipe = self.get(recipe_id)
+        recipe.rating = stars
+        return recipe
+
+    def add_review(
+        self,
+        recipe_id: str,
+        author_id: str,
+        author_name: str,
+        rating: int,
+        text: str,
+    ) -> Review:
+        recipe = self.get(recipe_id)
+        clean_text = text.strip()
+
+        if not isinstance(rating, int) or not 1 <= rating <= 5:
+            raise ValueError("Rating must be between 1 and 5.")
+
+        if not clean_text:
+            raise ValueError("Review text cannot be empty.")
+
+        if len(clean_text) > 1000:
+            raise ValueError("Review must be 1000 characters or fewer.")
+
+        flagged_words = {"stupid", "idiot"}
+        words = set(re.findall(r"\b\w+\b", clean_text.casefold()))
+
+        if words & flagged_words:
+            raise ValueError("Review contains flagged language.")
+
+        review = Review(
+            author_id=author_id,
+            author_name=author_name,
+            rating=rating,
+            text=clean_text,
         )
 
-    @bp.get("/recipes/<recipe_id>")
-    def recipe_detail(recipe_id: str):
+        recipe.reviews.append(review)
+        return review
+
+    def scale_ingredients(self, recipe_id: str, target_servings: int) -> list[Ingredient]:
+        """Return quantities for a serving count without changing the saved recipe."""
+        recipe = self.get(recipe_id)
+        if type(target_servings) is not int or target_servings < 1:
+            raise ValueError("Servings must be a whole number of at least 1")
+        if type(recipe.servings) is not int or recipe.servings < 1:
+            raise ValueError("The saved recipe must have a valid serving count")
         try:
-            recipe = service.get(recipe_id)
-        except RecipeNotFound:
-            abort(404)
+            factor = target_servings / recipe.servings
+            scaled = [Ingredient(i.name, i.quantity * factor, i.unit) for i in recipe.ingredients]
+            if not isfinite(factor) or any(not isfinite(i.quantity) for i in scaled):
+                raise ValueError("Scaled ingredient amounts must be finite")
+        except OverflowError:
+            raise ValueError("The serving count is too large to scale this recipe") from None
+        return scaled
 
-        user = current_user()
-        is_saved = user is not None and recipe_id in user.favorites
-
-        target_servings = recipe.servings
-        ingredients = recipe.ingredients
-        error = None
-
-        # US-20: Preserve the measurement conversion feature.
-        measurement_system = request.args.get("units", "original")
-        if measurement_system not in {"original", "metric"}:
-            measurement_system = "original"
-
-        try:
-            # US-17: Scale ingredient quantities by servings.
-            if "servings" in request.args:
-                try:
-                    target_servings = int(request.args["servings"])
-                except ValueError:
-                    raise ValueError(
-                        "Servings must be a whole number of at least 1"
-                    ) from None
-
-            ingredients = service.scale_ingredients(recipe_id, target_servings)
-
-            if measurement_system == "metric":
-                ingredients = convert_to_metric(ingredients)
-
-        except ValueError as exc:
-            error = str(exc)
-            target_servings = recipe.servings
-            ingredients = recipe.ingredients
-            measurement_system = "original"
-
-        return render_template(
-            "recipe_detail.html",
-            recipe=recipe,
-            is_saved=is_saved,
-            ingredients=ingredients,
-            target_servings=target_servings,
-            servings_error=error,
-            measurement_system=measurement_system,
-            unsuitable=is_unsuitable(recipe, user),
-        ), 400 if error else 200
-
-    def _label_choices(existing=()):
-        return diet_label_choices(current_user(), existing)
-
-    def _recipe_form_values(*, include_nutrition: bool = True, existing_labels=()) -> dict:
-        values = parse_recipe_form(request.form, include_nutrition=include_nutrition)
-        values["diet_labels"] = clean_diet_labels(
-            request.form.getlist("diet_labels"),
-            current_user(),
-            existing_labels,
-        )
-        return values
-
-    @bp.route("/recipes/add", methods=["GET", "POST"])
-    def add_recipe():
-        if request.method == "POST":
-            form_values = _recipe_form_values(include_nutrition=False)
-            imported = request.form.get("_imported") == "1"
-            try:
-                form_values = _recipe_form_values()
-            except ValueError as e:
-                flash(str(e), "danger")
-                return render_template(
-                    "add_recipe.html",
-                    draft=form_values,
-                    imported=imported,
-                    diet_label_choices=_label_choices(),
+    def shopping_items(self, recipe_ids: Iterable[str]) -> list[Ingredient]:
+        """Combine same-name ingredients when their units match; preserve other units."""
+        totals: dict[tuple[str, str], Ingredient] = {}
+        for recipe_id in recipe_ids:
+            for item in self.get(recipe_id).ingredients:
+                key = (item.name.strip().casefold(), item.unit.strip().casefold())
+                previous = totals.get(key)
+                totals[key] = Ingredient(
+                    previous.name if previous else item.name,
+                    (previous.quantity if previous else 0) + item.quantity,
+                    previous.unit if previous else item.unit,
                 )
+        return list(totals.values())
 
-            try:
-                new_recipe = Recipe(id=str(uuid.uuid4())[:8], **form_values)
-                service.create(new_recipe)
-                return redirect(url_for("main.home"))
-            except ValueError as e:
-                return render_template(
-                    "add_recipe.html",
-                    draft=form_values,
-                    imported=imported,
-                    form_error=str(e),
-                    diet_label_choices=_label_choices(),
-                ), 400
+    def pantry_suggestions(self, pantry_names: Iterable[str]) -> list[tuple[Recipe, float, list[str]]]:
+        """Return recipes ranked by exact normalized ingredient-name coverage."""
+        pantry = {name.strip().casefold() for name in pantry_names}
+        ranked = []
+        for recipe in self._recipes.values():
+            names = {ingredient.name.strip().casefold() for ingredient in recipe.ingredients}
+            matched = names & pantry
+            score = len(matched) / len(names) if names else 0.0
+            missing = [ingredient.name for ingredient in recipe.ingredients
+                       if ingredient.name.strip().casefold() not in pantry]
+            ranked.append((recipe, score, missing))
+        return sorted(ranked, key=lambda row: (-row[1], row[0].title.casefold()))
 
-        return render_template(
-            "add_recipe.html",
-            diet_label_choices=_label_choices(),
-        )
-
-    @bp.route("/recipes/<recipe_id>/edit", methods=["GET", "POST"])
-    def edit_recipe(recipe_id: str):
-        try:
-            recipe = service.get(recipe_id)
-        except RecipeNotFound:
-            abort(404)
-
-        if request.method == "POST":
-            try:
-                service.update(
-                    recipe_id,
-                    **_recipe_form_values(existing_labels=recipe.diet_labels),
-                )
-                return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
-            except ValueError as e:
-                flash(str(e), "danger")
-
-        return render_template(
-            "add_recipe.html",
-            recipe=recipe,
-            diet_label_choices=_label_choices(recipe.diet_labels),
-        )
-
-    @bp.post("/recipes/<recipe_id>/reviews")
-    def submit_recipe_review(recipe_id: str):
-        try:
-            service.get(recipe_id)
-        except RecipeNotFound:
-            abort(404)
-
-        try:
-            rating = int(request.form.get("rating", ""))
-        except ValueError:
-            rating = 0
-
-        try:
-            service.add_review(
-                recipe_id=recipe_id,
-                author_id=session["user_id"],
-                author_name=session.get("user_name", "User"),
-                rating=rating,
-                text=request.form.get("review", ""),
-            )
-            flash("Review submitted successfully.", "success")
-
-        except ValueError as error:
-            flash(str(error), "danger")
-
-        return redirect(
-            url_for("main.recipe_detail", recipe_id=recipe_id)
-        )
-
-    @bp.post("/recipes/<recipe_id>/delete")
-    def delete_recipe(recipe_id: str):
-        try:
-            recipe = service.get(recipe_id)
-        except RecipeNotFound:
-            abort(404)
-
-        service.delete(recipe_id)
-        flash(f'Deleted "{recipe.title}".', "success")
-        return redirect(url_for("main.home"))
-
-    @bp.route("/recipes/import", methods=["GET", "POST"])
-    def import_recipe():
-        source_url = ""
-        error = None
-
-        if request.method == "POST":
-            source_url = request.form.get("source_url", "").strip()
-            try:
-                html = fetch_recipe_html(source_url)
-                draft = build_recipe_draft(extract_recipe(html), source_url)
-                return render_template(
-                    "add_recipe.html",
-                    draft=draft,
-                    imported=True,
-                    diet_label_choices=_label_choices(),
-                )
-            except ValueError as exc:
-                error = str(exc)
-
-        return render_template(
-            "import_recipe.html", source_url=source_url, error=error
-        ), 400 if error else 200
-
-    return bp
+    def add_recipe_from_socials(self, recipe_id: str) -> Recipe:
+        return self.set_favorite(recipe_id)
