@@ -2,6 +2,7 @@ import unittest
 
 from app import create_app
 from app.services.recipes import Ingredient, Recipe, RecipeService
+from app.services.users import User, UserService
 
 from tests.tests_helpers import sign_in
 
@@ -27,7 +28,10 @@ class ShoppingListWebTests(unittest.TestCase):
                 ["Simmer"],
             ),
         ])
-        self.app = create_app(self.service)
+        self.users = UserService([
+            User("test-user", "Test User", "test@example.com", "unused-hash"),
+        ])
+        self.app = create_app(self.service, self.users)
         self.client = self.app.test_client()
         sign_in(self.client)
 
@@ -124,6 +128,40 @@ class ShoppingListWebTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Your shopping list is empty.", response.data)
+
+    def test_checking_an_item_adds_it_to_the_pantry_once(self):
+        self.client.post("/recipes/pasta/shopping-list")
+
+        response = self.client.post(
+            "/shopping-list/items/0/check",
+            data={"checked": "1"},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"checked", response.data)
+        pantry = self.users.get("test-user").pantry
+        self.assertEqual(len(pantry), 1)
+        self.assertEqual((pantry[0].name, pantry[0].quantity, pantry[0].unit), ("Tomatoes", 2, "cups"))
+
+        self.client.post("/shopping-list/items/0/check", data={"checked": "1"})
+        self.assertEqual(self.users.get("test-user").pantry[0].quantity, 2)
+
+    def test_manual_pantry_entries_merge_matching_items(self):
+        self.client.post(
+            "/pantry", data={"name": "Olive oil", "quantity": "1", "unit": "tbsp"}
+        )
+        response = self.client.post(
+            "/pantry",
+            data={"name": "olive OIL", "quantity": "2", "unit": "TBSP"},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"3.0 tbsp Olive oil", response.data)
+        pantry = self.users.get("test-user").pantry
+        self.assertEqual(len(pantry), 1)
+        self.assertEqual(pantry[0].quantity, 3)
 
 
 if __name__ == "__main__":

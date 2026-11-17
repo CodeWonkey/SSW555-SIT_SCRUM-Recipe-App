@@ -44,14 +44,16 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
 .recipe-form, .account-form { max-width: 680px; display: grid; gap: 22px; padding-bottom: 24px; }
 .form-field { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; }
 .form-field label, .form-field legend { padding: 0; font-weight: 650; }
-.recipe-form input, .recipe-form textarea, .account-form input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
+.recipe-form input, .recipe-form textarea, .account-form input,
+.account-form select, .servings-form input, .pantry-form input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
 .recipe-form textarea { resize: vertical; }
 .recipe-form input::placeholder, .recipe-form textarea::placeholder, .account-form input::placeholder { color: var(--muted); }
-.recipe-form input:focus-visible, .recipe-form textarea:focus-visible, .account-form input:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.recipe-form input:focus-visible, .recipe-form textarea:focus-visible,
+.account-form input:focus-visible, .servings-form input:focus-visible,
+.pantry-form input:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
 .field-hint { margin: 0; color: var(--muted); font-size: .9rem; }
 .servings-form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 16px 0 8px; }
-.servings-form input { width: 110px; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
-.servings-form input:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.servings-form input { width: 110px; }
 .servings-form a { padding: 10px 0; }
 .form-error { margin: 0 0 16px; color: #8a2f2f; font-weight: 650; }
 
@@ -69,12 +71,6 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
 .search-form .form-field { flex: 1 1 280px; min-width: 0; }
 .search-form .form-actions { flex-wrap: wrap; }
 
-@media (max-width: 600px) {
-  .section-heading { align-items: start; flex-direction: column; }
-  .intro { padding-top: 58px; }
-  .ingredient-row { grid-template-columns: 1fr 1fr; }
-  .ingredient-row input:first-child { grid-column: 1 / -1; }
-}
 
 .logout-form {
   display: inline;
@@ -88,8 +84,24 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
 
 .flash { margin: 20px 0 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--mint); }
 .flash-danger { border-color: #c0392b; background: #fdf0ee; color: #8a2a20; }
-.account-form select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
 .week { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .day-plan { padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .day-plan h3 { margin-bottom: 8px; }
 .day-plan p:last-child { margin-bottom: 0; color: var(--muted); }
+.shopping-items { display: grid; gap: 8px; padding: 0; list-style: none; }
+.shopping-items form { margin: 0; }
+.shopping-items label { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; }
+.shopping-items input { width: 1.1rem; height: 1.1rem; }
+.pantry-form { max-width: 680px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(100px, 1fr) minmax(100px, 1fr) auto; gap: 12px; align-items: end; margin-bottom: 28px; }
+.pantry-items { max-width: 680px; display: grid; gap: 8px; padding: 0; list-style: none; }
+.pantry-items li { padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+
+@media (max-width: 600px) {
+  .section-heading { align-items: start; flex-direction: column; }
+  .intro { padding-top: 58px; }
+  .ingredient-row { grid-template-columns: 1fr 1fr; }
+  .ingredient-row input:first-child { grid-column: 1 / -1; }
+
+  .pantry-form { grid-template-columns: 1fr 1fr; }
+  .pantry-form .form-field:first-child { grid-column: 1 / -1; }
+}

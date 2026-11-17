@@ -10,13 +10,15 @@
 
   <section>
     {% if items %}
-      <ul>
+      <ul class="shopping-items">
         {% for item in items %}
           <li>
-            <label>
-              <input type="checkbox">
-              {{ item.quantity }} {{ item.unit }} {{ item.name }}
-            </label>
+            <form method="POST" action="{{ url_for('main.check_shopping_item', item_index=loop.index0) }}">
+              <label>
+                <input type="checkbox" name="checked" value="1" onchange="this.form.submit()"{% if (item.name.strip().casefold() ~ '|' ~ item.unit.strip().casefold()) in checked_items %} checked{% endif %}>
+                {{ item.quantity }} {{ item.unit }} {{ item.name }}
+              </label>
+            </form>
           </li>
         {% endfor %}
       </ul>
