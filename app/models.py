@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from uuid import uuid4
 from math import isfinite
 
 
@@ -41,6 +42,8 @@ class Review:
     author_name: str
     rating: int
     text: str
+    id: str = field(default_factory=lambda: uuid4().hex)
+    edited: bool = False
 
 
 @dataclass

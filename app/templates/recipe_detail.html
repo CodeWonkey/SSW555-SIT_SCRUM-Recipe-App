@@ -168,6 +168,14 @@
             <strong>{{ review.author_name }}</strong>
             - {{ review.rating }}/5 stars
             <p>{{ review.text }}</p>
+            {% if review.edited %}<span class="field-hint">Edited</span>{% endif %}
+            {% if review.author_id == session.get('user_id') %}
+              <a href="{{ url_for('main.edit_submitted_review', recipe_id=recipe.id, review_id=review.id) }}">Edit review</a>
+              <form method="POST" action="{{ url_for('main.delete_submitted_review', recipe_id=recipe.id, review_id=review.id) }}"
+                    onsubmit="return confirm('Delete this review? This cannot be undone.');">
+                <button type="submit" class="button button-danger">Delete review</button>
+              </form>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>

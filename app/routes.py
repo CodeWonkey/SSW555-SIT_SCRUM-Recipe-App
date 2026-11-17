@@ -8,7 +8,7 @@ from app.services.recipe_fetch import fetch_recipe_html
 from app.services.recipe_import import build_recipe_draft, extract_recipe
 from app.services.recipe_pdf import recipe_pdf
 from app.services.recipe_share import recipe_share_text
-from app.services.recipes import RecipeNotFound, RecipeService, Recipe
+from app.services.recipes import RecipeNotFound, ReviewNotFound, ReviewPermissionDenied, RecipeService, Recipe
 from app.services.users import UserService
 from app.web.accounts import register_account_routes
 from app.web.forms import parse_recipe_form
@@ -225,6 +225,52 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         return redirect(
             url_for("main.recipe_detail", recipe_id=recipe_id)
         )
+
+    @bp.route("/recipes/<recipe_id>/reviews/<review_id>/edit", methods=["GET", "POST"])
+    def edit_submitted_review(recipe_id: str, review_id: str):
+        recipe = _get_recipe_or_404(recipe_id)
+        try:
+            review = service.get_review(recipe_id, review_id)
+        except ReviewNotFound:
+            abort(404)
+        if review.author_id != session["user_id"]:
+            abort(403)
+
+        if request.method == "POST":
+            try:
+                service.edit_review(
+                    recipe_id, review_id, session["user_id"],
+                    _form_int("rating"), request.form.get("review", ""),
+                )
+            except ReviewNotFound:
+                abort(404)
+            except ReviewPermissionDenied:
+                abort(403)
+            except ValueError as error:
+                flash(str(error), "danger")
+            else:
+                flash("Review updated successfully.", "success")
+                return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
+
+        return render_template(
+            "edit_review.html",
+            recipe=recipe,
+            review=review,
+            form_rating=request.form.get("rating", str(review.rating)),
+            form_text=request.form.get("review", review.text),
+        )
+
+    @bp.post("/recipes/<recipe_id>/reviews/<review_id>/delete")
+    def delete_submitted_review(recipe_id: str, review_id: str):
+        _get_recipe_or_404(recipe_id)
+        try:
+            service.delete_review(recipe_id, review_id, session["user_id"])
+        except ReviewNotFound:
+            abort(404)
+        except ReviewPermissionDenied:
+            abort(403)
+        flash("Review deleted successfully.", "success")
+        return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
 
     def _form_int(field: str) -> int:
         try:
