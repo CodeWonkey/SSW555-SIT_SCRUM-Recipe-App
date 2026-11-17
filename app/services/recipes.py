@@ -1,5 +1,6 @@
 from __future__ import annotations
 import re
+from dataclasses import replace
 from math import isfinite
 from typing import Iterable
 
@@ -10,6 +11,14 @@ _FLAGGED_WORDS = frozenset({"stupid", "idiot"})
 
 class RecipeNotFound(KeyError):
     """Raised when a requested recipe ID is not in the service."""
+
+
+class ReviewNotFound(KeyError):
+    """Raised when a review does not exist on the requested recipe."""
+
+
+class ReviewPermissionDenied(PermissionError):
+    """Raised when a user tries to change another author's review."""
 
 
 class RecipeService:
@@ -114,19 +123,7 @@ class RecipeService:
         text: str,
     ) -> Review:
         recipe = self.get(recipe_id)
-        clean_text = text.strip()
-
-        if not isinstance(rating, int) or not 1 <= rating <= 5:
-            raise ValueError("Rating must be between 1 and 5.")
-
-        if not clean_text:
-            raise ValueError("Review text cannot be empty.")
-
-        if len(clean_text) > 1000:
-            raise ValueError("Review must be 1000 characters or fewer.")
-
-        if set(_WORD.findall(clean_text.casefold())) & _FLAGGED_WORDS:
-            raise ValueError("Review contains flagged language.")
+        clean_text = self._validate_review(rating, text)
 
         review = Review(
             author_id=author_id,
@@ -137,6 +134,57 @@ class RecipeService:
 
         recipe.reviews.append(review)
         return review
+
+    @staticmethod
+    def _validate_review(rating: int, text: str) -> str:
+        clean_text = text.strip()
+        if type(rating) is not int or not 1 <= rating <= 5:
+            raise ValueError("Rating must be between 1 and 5.")
+        if not clean_text:
+            raise ValueError("Review text cannot be empty.")
+        if len(clean_text) > 1000:
+            raise ValueError("Review must be 1000 characters or fewer.")
+        if set(_WORD.findall(clean_text.casefold())) & _FLAGGED_WORDS:
+            raise ValueError("Review contains flagged language.")
+        return clean_text
+
+    @staticmethod
+    def _review_position(recipe: Recipe, review_id: str) -> int:
+        """Locate a review once, or fail without changing the recipe."""
+        for position, review in enumerate(recipe.reviews):
+            if review.id == review_id:
+                return position
+        raise ReviewNotFound(review_id)
+
+    def _author_review(self, recipe_id: str, review_id: str,
+                       author_id: str, action: str) -> tuple[Recipe, int, Review]:
+        """Reuse lookup and permission checks for editing and deleting."""
+        recipe = self.get(recipe_id)
+        position = self._review_position(recipe, review_id)
+        review = recipe.reviews[position]
+        if review.author_id != author_id:
+            raise ReviewPermissionDenied(f"Only the author can {action} this review")
+        return recipe, position, review
+
+    def get_review(self, recipe_id: str, review_id: str) -> Review:
+        recipe = self.get(recipe_id)
+        return recipe.reviews[self._review_position(recipe, review_id)]
+
+    def edit_review(self, recipe_id: str, review_id: str,
+                    author_id: str, rating: int, text: str) -> Review:
+        recipe, position, previous = self._author_review(
+            recipe_id, review_id, author_id, "edit"
+        )
+        clean_text = self._validate_review(rating, text)
+        updated = replace(previous, rating=rating, text=clean_text, edited=True)
+        recipe.reviews[position] = updated
+        return updated
+
+    def delete_review(self, recipe_id: str, review_id: str, author_id: str) -> None:
+        recipe, _position, review = self._author_review(
+            recipe_id, review_id, author_id, "delete"
+        )
+        recipe.reviews = [item for item in recipe.reviews if item.id != review.id]
 
     def scale_ingredients(self, recipe_id: str, target_servings: int) -> list[Ingredient]:
         """Return quantities for a serving count without changing the saved recipe."""
