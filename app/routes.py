@@ -21,6 +21,13 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         if not user_id:
             return None
         return users.get(user_id)
+    
+    def _get_recipe_or_404(recipe_id: str) -> Recipe:
+        try:
+            return service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+            raise
 
     register_account_routes(bp, users, current_user)
     register_inventory_routes(bp, service, users, current_user)
@@ -63,51 +70,40 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 recipe.id for recipe in recipes if is_unsuitable(recipe, viewer)
             },
         )
+    
+    def _requested_servings(default: int) -> int:
+        if "servings" not in request.args:
+            return default
+        try:
+            return int(request.args["servings"])
+        except ValueError:
+            raise ValueError("Servings must be a whole number of at least 1") from None
+
+    def _scaled_view(recipe: Recipe):
+        system = request.args.get("units", "original")
+        if system not in {"original", "metric"}:
+            system = "original"
+        try:
+            target = _requested_servings(recipe.servings)
+            ingredients = service.scale_ingredients(recipe.id, target)
+            if system == "metric":
+                ingredients = convert_to_metric(ingredients)
+        except ValueError as exc:
+            return recipe.servings, recipe.ingredients, "original", str(exc)
+        return target, ingredients, system, None
 
     @bp.get("/recipes/<recipe_id>")
     def recipe_detail(recipe_id: str):
-        try:
-            recipe = service.get(recipe_id)
-        except RecipeNotFound:
-            abort(404)
+        recipe = _get_recipe_or_404(recipe_id)
 
         user = current_user()
-        is_saved = user is not None and recipe_id in user.favorites
-
-        target_servings = recipe.servings
-        ingredients = recipe.ingredients
-        error = None
-
-        # US-20: Preserve the measurement conversion feature.
-        measurement_system = request.args.get("units", "original")
-        if measurement_system not in {"original", "metric"}:
-            measurement_system = "original"
-
-        try:
-            # US-17: Scale ingredient quantities by servings.
-            if "servings" in request.args:
-                try:
-                    target_servings = int(request.args["servings"])
-                except ValueError:
-                    raise ValueError(
-                        "Servings must be a whole number of at least 1"
-                    ) from None
-
-            ingredients = service.scale_ingredients(recipe_id, target_servings)
-
-            if measurement_system == "metric":
-                ingredients = convert_to_metric(ingredients)
-
-        except ValueError as exc:
-            error = str(exc)
-            target_servings = recipe.servings
-            ingredients = recipe.ingredients
-            measurement_system = "original"
+        
+        target_servings, ingredients, measurement_system, error = _scaled_view(recipe)
 
         return render_template(
             "recipe_detail.html",
             recipe=recipe,
-            is_saved=is_saved,
+            is_saved=user is not None and recipe_id in user.favorites,
             ingredients=ingredients,
             target_servings=target_servings,
             servings_error=error,
@@ -163,10 +159,7 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
     @bp.route("/recipes/<recipe_id>/edit", methods=["GET", "POST"])
     def edit_recipe(recipe_id: str):
-        try:
-            recipe = service.get(recipe_id)
-        except RecipeNotFound:
-            abort(404)
+        recipe = _get_recipe_or_404(recipe_id)
 
         if request.method == "POST":
             try:
@@ -186,16 +179,10 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
     @bp.post("/recipes/<recipe_id>/reviews")
     def submit_recipe_review(recipe_id: str):
-        try:
-            service.get(recipe_id)
-        except RecipeNotFound:
-            abort(404)
-
-        try:
-            rating = int(request.form.get("rating", ""))
-        except ValueError:
-            rating = 0
-
+        _get_recipe_or_404(recipe_id)
+        stars = _form_int("stars")
+        rating = _form_int("rating")
+        
         try:
             service.add_review(
                 recipe_id=recipe_id,
@@ -212,18 +199,17 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         return redirect(
             url_for("main.recipe_detail", recipe_id=recipe_id)
         )
-    
+
+    def _form_int(field: str) -> int:
+        try:
+            return int(request.form.get(field, ""))
+        except ValueError:
+            return 0
+
     @bp.post("/recipes/<recipe_id>/rate")
     def rate_recipe(recipe_id: str):
-        try:
-            service.get(recipe_id)
-        except RecipeNotFound:
-            abort(404)
-
-        try:
-            stars = int(request.form.get("stars", ""))
-        except ValueError:
-            stars = 0
+        _get_recipe_or_404(recipe_id)
+        stars = _form_int("stars")
 
         try:
             service.rate(recipe_id, stars)
@@ -235,10 +221,7 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
     @bp.post("/recipes/<recipe_id>/delete")
     def delete_recipe(recipe_id: str):
-        try:
-            recipe = service.get(recipe_id)
-        except RecipeNotFound:
-            abort(404)
+        recipe = _get_recipe_or_404(recipe_id)
 
         service.delete(recipe_id)
         flash(f'Deleted "{recipe.title}".', "success")
