@@ -1,10 +1,12 @@
 import uuid
 
-from flask import Blueprint, Response, abort, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, Response, abort, render_template, request, redirect, url_for, flash, send_file, session
+from werkzeug.utils import secure_filename
 from app.services.diet_labels import clean_diet_labels, diet_label_choices, is_unsuitable
 from app.services.measurement_conversion import convert_to_metric
 from app.services.recipe_fetch import fetch_recipe_html
 from app.services.recipe_import import build_recipe_draft, extract_recipe
+from app.services.recipe_pdf import recipe_pdf
 from app.services.recipe_share import recipe_share_text
 from app.services.recipes import RecipeNotFound, RecipeService, Recipe
 from app.services.users import UserService
@@ -111,6 +113,13 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             measurement_system=measurement_system,
             unsuitable=is_unsuitable(recipe, user),
         ), 400 if error else 200
+
+    @bp.get("/recipes/<recipe_id>/export.pdf")
+    def export_recipe_pdf(recipe_id: str):
+        recipe = _get_recipe_or_404(recipe_id)
+        filename = secure_filename(recipe.title)[:100] or "recipe"
+        return send_file(recipe_pdf(recipe), mimetype="application/pdf",
+                         as_attachment=True, download_name=f"{filename}.pdf")
 
     @bp.get("/recipes/<recipe_id>/share")
     def share_recipe(recipe_id: str):
