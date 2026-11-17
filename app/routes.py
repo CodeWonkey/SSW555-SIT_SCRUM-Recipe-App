@@ -1,3 +1,131 @@
+import uuid
+
+from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
+from app.services.diet_labels import clean_diet_labels, diet_label_choices, is_unsuitable
+from app.services.measurement_conversion import convert_to_metric
+from app.services.recipe_fetch import fetch_recipe_html
+from app.services.recipe_import import build_recipe_draft, extract_recipe
+from app.services.recipes import RecipeNotFound, RecipeService, Recipe
+from app.services.users import UserService
+from app.web.accounts import register_account_routes
+from app.web.forms import parse_recipe_form
+from app.web.inventory import register_inventory_routes
+from app.web.planning import register_planning_routes
+
+
+def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
+    bp = Blueprint("main", __name__)
+
+    def current_user():
+        user_id = session.get("user_id")
+        if not user_id:
+            return None
+        return users.get(user_id)
+
+    register_account_routes(bp, users, current_user)
+    register_inventory_routes(bp, service, users, current_user)
+    register_planning_routes(bp, service, users, current_user)
+
+    PUBLIC_ENDPOINTS = {"main.login", "main.register"}
+
+    @bp.before_request
+    def require_login():
+        if request.endpoint in PUBLIC_ENDPOINTS or "user_id" in session:
+            return None
+        return redirect(url_for("main.login", next=request.full_path.rstrip("?")))
+
+    @bp.get("/")
+    def home():
+        query = request.args.get("q", "").strip()
+        sort = request.args.get("sort", "newest")
+
+        if sort not in {"newest", "az", "za"}:
+            sort = "newest"
+
+        recipes = service.search(query)
+
+        if sort == "newest":
+            recipes = list(reversed(recipes))
+        else:
+            recipes = sorted(
+                recipes,
+                key=lambda recipe: recipe.title.casefold(),
+                reverse=(sort == "za")
+            )
+
+        viewer = current_user()
+        return render_template(
+            "index.html",
+            recipes=recipes,
+            query=query,
+            sort=sort,
+            unsuitable_ids={
+                recipe.id for recipe in recipes if is_unsuitable(recipe, viewer)
+            },
+        )
+
+    @bp.get("/recipes/<recipe_id>")
+    def recipe_detail(recipe_id: str):
+        try:
+            recipe = service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+
+        user = current_user()
+        is_saved = user is not None and recipe_id in user.favorites
+
+        target_servings = recipe.servings
+        ingredients = recipe.ingredients
+        error = None
+
+        # US-20: Preserve the measurement conversion feature.
+        measurement_system = request.args.get("units", "original")
+        if measurement_system not in {"original", "metric"}:
+            measurement_system = "original"
+
+        try:
+            # US-17: Scale ingredient quantities by servings.
+            if "servings" in request.args:
+                try:
+                    target_servings = int(request.args["servings"])
+                except ValueError:
+                    raise ValueError(
+                        "Servings must be a whole number of at least 1"
+                    ) from None
+
+            ingredients = service.scale_ingredients(recipe_id, target_servings)
+
+            if measurement_system == "metric":
+                ingredients = convert_to_metric(ingredients)
+
+        except ValueError as exc:
+            error = str(exc)
+            target_servings = recipe.servings
+            ingredients = recipe.ingredients
+            measurement_system = "original"
+
+        return render_template(
+            "recipe_detail.html",
+            recipe=recipe,
+            is_saved=is_saved,
+            ingredients=ingredients,
+            target_servings=target_servings,
+            servings_error=error,
+            measurement_system=measurement_system,
+            unsuitable=is_unsuitable(recipe, user),
+        ), 400 if error else 200
+
+    def _label_choices(existing=()):
+        return diet_label_choices(current_user(), existing)
+
+    def _recipe_form_values(*, include_nutrition: bool = True, existing_labels=()) -> dict:
+        values = parse_recipe_form(request.form, include_nutrition=include_nutrition)
+        values["diet_labels"] = clean_diet_labels(
+            request.form.getlist("diet_labels"),
+            current_user(),
+            existing_labels,
+        )
+        return values
 
     @bp.route("/recipes/add", methods=["GET", "POST"])
     def add_recipe():
