@@ -17,3 +17,21 @@
     }
   });
 })();
+
+(() => {
+  const list = document.getElementById("tag-list");
+  const input = document.getElementById("tags");
+  if (!list || !input) return;
+
+  list.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-tag]");
+    if (!button || !list.contains(button)) return;
+    const tag = button.getAttribute("aria-label").slice("Remove tag ".length);
+    input.value = input.value
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => part && part !== tag)
+      .join(", ");
+    button.closest("li").remove();
+  });
+})();

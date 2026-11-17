@@ -73,6 +73,11 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
 .search-form .form-actions { flex-wrap: wrap; }
 
 
+.tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.tag-list li { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--mint); }
+.tag-list button { min-height: 32px; min-width: 32px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-size: 1.1rem; cursor: pointer; }
+.tag-list button:hover { background: var(--surface); }
+
 .logout-form {
   display: inline;
   margin: 0;

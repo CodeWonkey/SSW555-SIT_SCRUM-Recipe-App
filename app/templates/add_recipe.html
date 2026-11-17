@@ -37,8 +37,19 @@
     </div>
 
     <div class="form-field">
-      <label for="tags">Tags (comma-separated)</label>
+      <label for="tags">Tags</label>
+      {% if form_recipe and form_recipe.tags %}
+        <ul class="tag-list" id="tag-list">
+          {% for tag in form_recipe.tags|sort %}
+            <li>
+              <span>{{ tag }}</span>
+              <button type="button" aria-label="Remove tag {{ tag }}" data-remove-tag>×</button>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
       <input type="text" id="tags" name="tags" placeholder="Breakfast, Easy, Quick" value="{{ form_recipe.tags|sort|join(', ') if form_recipe else '' }}">
+      <p class="field-hint">Select × to remove a tag, then save. Separate new tags with commas.</p>
     </div>
 
     <fieldset class="form-field">

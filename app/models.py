@@ -43,7 +43,6 @@ class Review:
     text: str
 
 
-
 @dataclass
 class Recipe:
     id: str
@@ -59,3 +58,4 @@ class Recipe:
     source_link: str = ""
     reviews: list[Review] = field(default_factory=list)
     nutrition: Nutrition | None = None
+    diet_labels: set[str] = field(default_factory=set)
