@@ -32,7 +32,7 @@ Use synthetic data and keep each case aligned with that story's acceptance crite
 | US-24 Share a recipe | Select Share on the recipe being viewed. Share its saved cooking details through device sharing, copied text, or a downloadable text file that recipients can read without the local app. Handle unsupported or denied clipboard/sharing access and cancellation; require login and reject missing recipes. | `tests/test_share_recipe_web.py`, `tests/test_recipe_share_ui.cjs` |
 | US-25 Rate a recipe | Save a rating from 1 through 5 and reject a value outside that range. Show the rating on the list and the detail page. | Service tests (`tests/test_recipe_service.py`) |
 | US-26 Remove a category tag from a recipe | Remove only the chosen tag. Keep the other tags and the rest of the recipe. | Planned |
-| US-27 Export saved recipes to PDF | Include the title, ingredients, and instructions. Cover a long recipe and special characters. | Planned |
+| US-27 Export saved recipes to PDF | Include the title, ingredients, and instructions. Cover a long recipe and special characters. | `tests/test_recipe_pdf_web.py` |
 | US-28 Add and view recently cooked recipes | Record that a recipe was cooked. Show the history newest first, and keep each account's history separate. | `tests/test_cooking_history.py` |
 | US-29 Filter recipes by tag or favorites | Tag filtering ignores case. Favorites-only returns only favorite recipes. | `tests/test_recipe_service.py`, `tests/test_browse_by_type.py` |
 | US-30 Check Off Shopping List Items | Toggle an item between checked and unchecked. Show when every item is complete. | Planned |
@@ -54,4 +54,4 @@ Use synthetic data and keep each case aligned with that story's acceptance crite
 - Unit conversion should be explicit about supported ingredient and unit pairs. Do not silently treat volume and weight as interchangeable.
 - Pantry suggestion matching currently uses exact normalized ingredient names. Fuzzy matching needs a product decision and its own tests.
 - Shopping-list aggregation currently combines normalized ingredient names only when units also match.
-- Persistence, PDF export, automatic nutrition calculation, and voice support remain future work.
+- Persistence, automatic nutrition calculation, and voice support remain future work.
