@@ -2,11 +2,10 @@
 {% block title %}{{ recipe.title }} · Recipe Journal{% endblock %}
 
 {% block content %}
-  <section class="intro">
+  <section class="page-header recipe-header">
     <p class="eyebrow">RECIPE DETAILS</p>
     <h1>{{ recipe.title }}</h1>
-
-    <p>
+    <p class="recipe-meta">
       {{ target_servings }} servings
       {% if recipe.rating is not none %}
         · Rating: {{ recipe.rating }}/5
@@ -14,87 +13,86 @@
     </p>
 
     {% if recipe.tags %}
-      <p class="eyebrow">{{ recipe.tags|join(" · ") }}</p>
+      <p class="tag-list">{{ recipe.tags|join(" · ") }}</p>
     {% endif %}
   </section>
 
-  <section class="nutrition-panel" aria-labelledby="nutrition-heading">
-    <h2 id="nutrition-heading">Nutrition</h2>
-    {% if recipe.nutrition and recipe.nutrition.available %}
-      <p class="field-hint">Per serving</p>
-      <dl class="nutrition-grid">
-        {% for key, label, unit in [('calories', 'Calories', 'kcal'), ('protein', 'Protein', 'g'), ('carbs', 'Carbs', 'g'), ('fat', 'Fat', 'g')] %}
-          <div>
-            <dt>{{ label }}</dt>
-            <dd>{{ '%g'|format(recipe.nutrition|attr(key)) }} {{ unit }}</dd>
-          </div>
-        {% endfor %}
-      </dl>
-    {% else %}
-      <p class="field-hint">Nutrition info unavailable</p>
-    {% endif %}
-  </section>
-
-  <section>
-    <h2>Ingredients</h2>
-    <form method="GET" action="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}"
-          class="servings-form" id="servings-form">
-      <div class="form-field">
-        <label for="servings">Servings</label>
-        <input type="number" id="servings" name="servings" min="1" step="1" required
-               value="{{ target_servings }}" aria-describedby="servings-hint{% if servings_error %} servings-error{% endif %}"
-               {% if servings_error %}aria-invalid="true"{% endif %}>
-      </div>
-      <button type="submit" class="button">Update servings</button>
-      <a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">Reset to {{ recipe.servings }}</a>
+  <div class="recipe-actions" aria-label="Recipe actions">
+    <form method="POST" action="{{ url_for('main.add_to_shopping_list', recipe_id=recipe.id) }}">
+      <button type="submit" class="button">Add to Shopping List</button>
     </form>
-    <p class="field-hint" id="servings-hint">Original recipe: {{ recipe.servings }} servings. Changing servings adjusts ingredient amounts without changing your saved recipe.</p>
-    {% if servings_error %}
-      <p class="form-error" id="servings-error" role="alert">{{ servings_error }}</p>
+    <form method="POST" action="{{ url_for('main.mark_recipe_cooked', recipe_id=recipe.id) }}">
+      <button type="submit" class="button button-outline">Mark as Cooked</button>
+    </form>
+    {% if is_saved %}
+      <button type="button" class="button button-outline" disabled>Saved</button>
+    {% else %}
+      <form method="POST" action="{{ url_for('main.save_favorite', recipe_id=recipe.id) }}">
+        <button type="submit" class="button button-outline">Save to Favorites</button>
+      </form>
     {% endif %}
-    <ul>
-      {% for ingredient in ingredients %}
-        <li>
-          {{ '%.12g'|format(ingredient.quantity) }} {{ ingredient.unit }} {{ ingredient.name }}
-        </li>
-      {% endfor %}
-    </ul>
-  </section>
+  </div>
+
+  <div class="recipe-content">
+    <div class="recipe-main">
+      <section class="content-card">
+        <div class="content-heading">
+          <h2>Ingredients</h2>
+          <form method="GET" action="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}"
+                class="servings-form" id="servings-form">
+            <div class="form-field compact-field">
+              <label for="servings">Servings</label>
+              <input type="number" id="servings" name="servings" min="1" step="1" required
+                     value="{{ target_servings }}" aria-describedby="servings-hint{% if servings_error %} servings-error{% endif %}"
+                     {% if servings_error %}aria-invalid="true"{% endif %}>
+            </div>
+            <button type="submit" class="button button-small">Update servings</button>
+            <a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">Reset to {{ recipe.servings }}</a>
+          </form>
+        </div>
+        <p class="field-hint" id="servings-hint">Amounts adjust with servings. The saved recipe stays unchanged.</p>
+        {% if servings_error %}<p class="form-error" id="servings-error" role="alert">{{ servings_error }}</p>{% endif %}
+        <ul class="ingredient-list">
+          {% for ingredient in ingredients %}
+            <li>{{ '%.12g'|format(ingredient.quantity) }} {{ ingredient.unit }} {{ ingredient.name }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+      <section class="content-card">
+        <h2>Steps</h2>
+        <ol class="step-list">
+          {% for step in recipe.steps %}<li>{{ step }}</li>{% endfor %}
+        </ol>
+      </section>
+    </div>
+
+    <aside>
+      <section class="nutrition-panel" aria-labelledby="nutrition-heading">
+        <h2 id="nutrition-heading">Nutrition</h2>
+        {% if recipe.nutrition and recipe.nutrition.available %}
+          <p class="field-hint">Per serving</p>
+          <dl class="nutrition-grid">
+            {% for key, label, unit in [('calories', 'Calories', 'kcal'), ('protein', 'Protein', 'g'), ('carbs', 'Carbs', 'g'), ('fat', 'Fat', 'g')] %}
+              <div><dt>{{ label }}</dt><dd>{{ '%g'|format(recipe.nutrition|attr(key)) }} {{ unit }}</dd></div>
+            {% endfor %}
+          </dl>
+        {% else %}
+          <p class="field-hint">Nutrition info unavailable</p>
+        {% endif %}
+      </section>
+      {% if recipe.source_link %}
+        <section class="source-card">
+          <h2>Source</h2>
+          <a href="{{ recipe.source_link }}">View original recipe</a>
+        </section>
+      {% endif %}
+    </aside>
+  </div>
   <script src="{{ url_for('static', filename='js/servings.js') }}" defer></script>
 
-  <form method="POST" action="{{ url_for('main.add_to_shopping_list', recipe_id=recipe.id) }}">
-    <button type="submit" class="button">Add to Shopping List</button>
-  </form>
-
-  <form method="POST" action="{{ url_for('main.mark_recipe_cooked', recipe_id=recipe.id) }}">
-    <button type="submit" class="button button-outline">
-      Mark as Cooked
-    </button>
-  </form>
-
-  {% if is_saved %}
-    <button type="button" class="button button-outline" disabled>Saved</button>
-  {% else %}
-    <form method="POST" action="{{ url_for('main.save_favorite', recipe_id=recipe.id) }}">
-      <button type="submit" class="button button-outline">Save to Favorites</button>
-    </form>
-  {% endif %}
-
-  <section>
-    <h2>Steps</h2>
-    <ol>
-      {% for step in recipe.steps %}
-        <li>{{ step }}</li>
-      {% endfor %}
-    </ol>
-  </section>
-
-  <section>
+  <section class="content-card reviews-section">
     <h2>Recipe Reviews</h2>
-
-    <form method="POST"
-          action="{{ url_for('main.submit_recipe_review', recipe_id=recipe.id) }}">
-
+    <form method="POST" action="{{ url_for('main.submit_recipe_review', recipe_id=recipe.id) }}" class="review-form">
       <div class="form-field">
         <label for="review-rating">Your Rating</label>
         <select id="review-rating" name="rating" required>
@@ -122,14 +120,13 @@
       </button>
     </form>
 
-    <h3>Previous Reviews</h3>
-
+    <h3>Previous reviews</h3>
     {% if recipe.reviews %}
-      <ul>
+      <ul class="review-list">
         {% for review in recipe.reviews %}
           <li>
             <strong>{{ review.author_name }}</strong>
-            - {{ review.rating }}/5 stars
+            · {{ review.rating }}/5 stars
             <p>{{ review.text }}</p>
           </li>
         {% endfor %}
@@ -139,19 +136,12 @@
     {% endif %}
   </section>
 
-  {% if recipe.source_link %}
-    <section>
-      <h2>Source</h2>
-      <a href="{{ recipe.source_link }}">{{ recipe.source_link }}</a>
-    </section>
-  {% endif %}
-
-  <p>
+  <div class="page-footer-actions">
     <a class="button button-outline" href="{{ url_for('main.edit_recipe', recipe_id=recipe.id) }}">Edit recipe</a>
     <a href="{{ url_for('main.home') }}">Back to recipes</a>
-  </p>
-  <form method="POST" action="{{ url_for('main.delete_recipe', recipe_id=recipe.id) }}"
-        onsubmit="return confirm('Delete this recipe? This cannot be undone.');">
-    <button type="submit" class="button button-danger">Delete recipe</button>
-  </form>
+    <form method="POST" action="{{ url_for('main.delete_recipe', recipe_id=recipe.id) }}"
+          onsubmit="return confirm('Delete this recipe? This cannot be undone.');">
+      <button type="submit" class="text-button danger-link">Delete recipe</button>
+    </form>
+  </div>
 {% endblock %}
