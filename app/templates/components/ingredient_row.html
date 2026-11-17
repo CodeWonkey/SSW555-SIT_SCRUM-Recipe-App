@@ -1,0 +1,8 @@
+{% macro ingredient_row(ing=none) %}
+        <div class="ingredient-row">
+          <input type="text" name="ingredient_name[]" placeholder="Name (e.g., Flour)" required value="{{ ing.name if ing else '' }}">
+          <input type="number" step="any" name="ingredient_quantity[]" placeholder="Qty" required value="{{ ing.quantity if ing else '' }}">
+          <input type="text" name="ingredient_unit[]" placeholder="Unit (e.g., cups)" value="{{ ing.unit if ing else '' }}">
+          <button type="button" class="button button-outline" data-remove-ingredient aria-label="Remove ingredient">×</button>
+        </div>
+{% endmacro %}

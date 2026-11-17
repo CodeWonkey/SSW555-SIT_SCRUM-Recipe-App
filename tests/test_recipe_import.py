@@ -23,7 +23,7 @@ def test_extract_recipe():
     assert recipe["recipeIngredient"] == ["2 slices bread"]
 
 
-def test_draft_normalizes_sections_tags_and_servings_without_guessing_quantities():
+def test_draft_normalizes_sections_tags_servings_and_ingredient_fields():
     draft = build_recipe_draft({
         "name": "<b>Simple Toast</b>",
         "recipeIngredient": ["2 slices bread", "Butter, to taste"],
@@ -47,10 +47,30 @@ def test_draft_normalizes_sections_tags_and_servings_without_guessing_quantities
     ]
     assert draft["tags"] == {"easy", "quick", "toast", "Breakfast", "British"}
     assert draft["ingredients"] == [
-        {"name": "2 slices bread", "quantity": "", "unit": ""},
+        {"name": "bread", "quantity": 2, "unit": "slices"},
         {"name": "Butter, to taste", "quantity": "", "unit": ""},
     ]
     assert draft["source_link"] == "https://example.com/toast"
+
+
+def test_draft_parses_common_quantity_and_unit_formats():
+    draft = build_recipe_draft({
+        "recipeIngredient": [
+            "1 1/2 tablespoons olive oil",
+            "½ tsp salt",
+            "3 large eggs",
+            "1 (14-ounce) can diced tomatoes",
+            "2-3 cups stock",
+        ],
+    }, "https://example.com")
+
+    assert draft["ingredients"] == [
+        {"name": "olive oil", "quantity": 1.5, "unit": "tablespoons"},
+        {"name": "salt", "quantity": 0.5, "unit": "tsp"},
+        {"name": "large eggs", "quantity": 3, "unit": ""},
+        {"name": "diced tomatoes", "quantity": 1, "unit": "can"},
+        {"name": "2-3 cups stock", "quantity": "", "unit": ""},
+    ]
 
 
 @pytest.mark.parametrize("recipe_yield", [None, "1 loaf", "4-6 servings", 0])
