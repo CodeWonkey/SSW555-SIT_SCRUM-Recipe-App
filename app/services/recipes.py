@@ -94,3 +94,89 @@ class RecipeService:
 
     def rate(self, recipe_id: str, stars: int) -> Recipe:
         if not 1 <= stars <= 5:
+            raise ValueError("Rating must be between 1 and 5 stars")
+        recipe = self.get(recipe_id)
+        recipe.rating = stars
+        return recipe
+
+    def add_review(
+        self,
+        recipe_id: str,
+        author_id: str,
+        author_name: str,
+        rating: int,
+        text: str,
+    ) -> Review:
+        recipe = self.get(recipe_id)
+        clean_text = text.strip()
+
+        if not isinstance(rating, int) or not 1 <= rating <= 5:
+            raise ValueError("Rating must be between 1 and 5.")
+
+        if not clean_text:
+            raise ValueError("Review text cannot be empty.")
+
+        if len(clean_text) > 1000:
+            raise ValueError("Review must be 1000 characters or fewer.")
+
+        flagged_words = {"stupid", "idiot"}
+        words = set(re.findall(r"\b\w+\b", clean_text.casefold()))
+
+        if words & flagged_words:
+            raise ValueError("Review contains flagged language.")
+
+        review = Review(
+            author_id=author_id,
+            author_name=author_name,
+            rating=rating,
+            text=clean_text,
+        )
+
+        recipe.reviews.append(review)
+        return review
+
+    def scale_ingredients(self, recipe_id: str, target_servings: int) -> list[Ingredient]:
+        """Return quantities for a serving count without changing the saved recipe."""
+        recipe = self.get(recipe_id)
+        if type(target_servings) is not int or target_servings < 1:
+            raise ValueError("Servings must be a whole number of at least 1")
+        if type(recipe.servings) is not int or recipe.servings < 1:
+            raise ValueError("The saved recipe must have a valid serving count")
+        try:
+            factor = target_servings / recipe.servings
+            scaled = [Ingredient(i.name, i.quantity * factor, i.unit) for i in recipe.ingredients]
+            if not isfinite(factor) or any(not isfinite(i.quantity) for i in scaled):
+                raise ValueError("Scaled ingredient amounts must be finite")
+        except OverflowError:
+            raise ValueError("The serving count is too large to scale this recipe") from None
+        return scaled
+
+    def shopping_items(self, recipe_ids: Iterable[str]) -> list[Ingredient]:
+        """Combine same-name ingredients when their units match; preserve other units."""
+        totals: dict[tuple[str, str], Ingredient] = {}
+        for recipe_id in recipe_ids:
+            for item in self.get(recipe_id).ingredients:
+                key = (item.name.strip().casefold(), item.unit.strip().casefold())
+                previous = totals.get(key)
+                totals[key] = Ingredient(
+                    previous.name if previous else item.name,
+                    (previous.quantity if previous else 0) + item.quantity,
+                    previous.unit if previous else item.unit,
+                )
+        return list(totals.values())
+
+    def pantry_suggestions(self, pantry_names: Iterable[str]) -> list[tuple[Recipe, float, list[str]]]:
+        """Return recipes ranked by exact normalized ingredient-name coverage."""
+        pantry = {name.strip().casefold() for name in pantry_names}
+        ranked = []
+        for recipe in self._recipes.values():
+            names = {ingredient.name.strip().casefold() for ingredient in recipe.ingredients}
+            matched = names & pantry
+            score = len(matched) / len(names) if names else 0.0
+            missing = [ingredient.name for ingredient in recipe.ingredients
+                       if ingredient.name.strip().casefold() not in pantry]
+            ranked.append((recipe, score, missing))
+        return sorted(ranked, key=lambda row: (-row[1], row[0].title.casefold()))
+
+    def add_recipe_from_socials(self, recipe_id: str) -> Recipe:
+        return self.set_favorite(recipe_id)
