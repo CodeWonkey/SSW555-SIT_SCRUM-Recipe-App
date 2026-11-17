@@ -52,6 +52,18 @@
       <p class="field-hint">Select × to remove a tag, then save. Separate new tags with commas.</p>
     </div>
 
+    <fieldset class="form-field">
+      <legend>Dietary labels</legend>
+      <p class="field-hint">Check every diet or allergy-free label this recipe meets. Vegan also counts as vegetarian.</p>
+      {% set selected = form_recipe.diet_labels|default([], true) if form_recipe else [] %}
+      {% for value, label in diet_label_choices|default([]) %}
+        <label for="diet-{{ value }}">
+          <input type="checkbox" id="diet-{{ value }}" name="diet_labels" value="{{ value }}"{% if value in selected %} checked{% endif %}>
+          {{ label }}
+        </label>
+      {% endfor %}
+    </fieldset>
+
     <div class="form-field">
       <label for="source_link">Source Link (optional)</label>
       <input type="url" id="source_link" name="source_link" placeholder="https://example.com/recipe" value="{{ form_recipe.source_link if form_recipe else '' }}">

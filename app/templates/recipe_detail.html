@@ -5,6 +5,9 @@
   <section class="intro">
     <p class="eyebrow">RECIPE DETAILS</p>
     <h1>{{ recipe.title }}</h1>
+    {% if unsuitable %}
+      <p class="diet-warning">May not be suitable</p>
+    {% endif %}
 
     <p>
       {{ target_servings }} servings

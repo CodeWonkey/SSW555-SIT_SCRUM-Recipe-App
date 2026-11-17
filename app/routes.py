@@ -1,6 +1,7 @@
 import uuid
 
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
+from app.services.diet_labels import clean_diet_labels, diet_label_choices, is_unsuitable
 from app.services.measurement_conversion import convert_to_metric
 from app.services.recipe_fetch import fetch_recipe_html
 from app.services.recipe_import import build_recipe_draft, extract_recipe
@@ -52,11 +53,15 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 reverse=(sort == "za")
             )
 
+        viewer = current_user()
         return render_template(
             "index.html",
             recipes=recipes,
             query=query,
-            sort=sort
+            sort=sort,
+            unsuitable_ids={
+                recipe.id for recipe in recipes if is_unsuitable(recipe, viewer)
+            },
         )
 
     @bp.get("/recipes/<recipe_id>")
@@ -73,14 +78,13 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
         ingredients = recipe.ingredients
         error = None
 
-        # US-20
+        # US-20: Preserve the measurement conversion feature.
         measurement_system = request.args.get("units", "original")
-
         if measurement_system not in {"original", "metric"}:
             measurement_system = "original"
 
         try:
-            # US-17
+            # US-17: Scale ingredient quantities by servings.
             if "servings" in request.args:
                 try:
                     target_servings = int(request.args["servings"])
@@ -89,12 +93,8 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                         "Servings must be a whole number of at least 1"
                     ) from None
 
-            ingredients = service.scale_ingredients(
-                recipe_id,
-                target_servings,
-            )
+            ingredients = service.scale_ingredients(recipe_id, target_servings)
 
-            # US-20
             if measurement_system == "metric":
                 ingredients = convert_to_metric(ingredients)
 
@@ -112,19 +112,35 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             target_servings=target_servings,
             servings_error=error,
             measurement_system=measurement_system,
+            unsuitable=is_unsuitable(recipe, user),
         ), 400 if error else 200
+
+    def _label_choices(existing=()):
+        return diet_label_choices(current_user(), existing)
+
+    def _recipe_form_values(*, include_nutrition: bool = True, existing_labels=()) -> dict:
+        values = parse_recipe_form(request.form, include_nutrition=include_nutrition)
+        values["diet_labels"] = clean_diet_labels(
+            request.form.getlist("diet_labels"),
+            current_user(),
+            existing_labels,
+        )
+        return values
 
     @bp.route("/recipes/add", methods=["GET", "POST"])
     def add_recipe():
         if request.method == "POST":
-            form_values = parse_recipe_form(request.form, include_nutrition=False)
+            form_values = _recipe_form_values(include_nutrition=False)
             imported = request.form.get("_imported") == "1"
             try:
-                form_values = parse_recipe_form(request.form)
+                form_values = _recipe_form_values()
             except ValueError as e:
                 flash(str(e), "danger")
                 return render_template(
-                    "add_recipe.html", draft=form_values, imported=imported
+                    "add_recipe.html",
+                    draft=form_values,
+                    imported=imported,
+                    diet_label_choices=_label_choices(),
                 )
 
             try:
@@ -137,9 +153,13 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                     draft=form_values,
                     imported=imported,
                     form_error=str(e),
+                    diet_label_choices=_label_choices(),
                 ), 400
 
-        return render_template("add_recipe.html")
+        return render_template(
+            "add_recipe.html",
+            diet_label_choices=_label_choices(),
+        )
 
     @bp.route("/recipes/<recipe_id>/edit", methods=["GET", "POST"])
     def edit_recipe(recipe_id: str):
@@ -150,12 +170,19 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
 
         if request.method == "POST":
             try:
-                service.update(recipe_id, **parse_recipe_form(request.form))
+                service.update(
+                    recipe_id,
+                    **_recipe_form_values(existing_labels=recipe.diet_labels),
+                )
                 return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
             except ValueError as e:
                 flash(str(e), "danger")
 
-        return render_template("add_recipe.html", recipe=recipe)
+        return render_template(
+            "add_recipe.html",
+            recipe=recipe,
+            diet_label_choices=_label_choices(recipe.diet_labels),
+        )
 
     @bp.post("/recipes/<recipe_id>/reviews")
     def submit_recipe_review(recipe_id: str):
@@ -186,7 +213,6 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             url_for("main.recipe_detail", recipe_id=recipe_id)
         )
 
-
     @bp.post("/recipes/<recipe_id>/delete")
     def delete_recipe(recipe_id: str):
         try:
@@ -209,7 +235,10 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
                 html = fetch_recipe_html(source_url)
                 draft = build_recipe_draft(extract_recipe(html), source_url)
                 return render_template(
-                    "add_recipe.html", draft=draft, imported=True
+                    "add_recipe.html",
+                    draft=draft,
+                    imported=True,
+                    diet_label_choices=_label_choices(),
                 )
             except ValueError as exc:
                 error = str(exc)

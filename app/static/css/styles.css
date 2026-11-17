@@ -33,6 +33,7 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
 .recipe-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
 .recipe-card, .empty-state { padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .recipe-card p:last-child, .empty-state p { margin-bottom: 0; color: var(--muted); }
+.recipe-card p.diet-warning, .diet-warning { margin-top: 8px; color: #8a2f2f; font-weight: 650; }
 .empty-state { background: var(--mint); }
 .site-footer { margin-top: 88px; padding: 22px 20px; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: .85rem; }
 .button-outline { border: 1px solid var(--green); background: transparent; color: var(--green); }

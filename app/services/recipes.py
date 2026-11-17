@@ -39,7 +39,10 @@ class RecipeService:
 
     def update(self, recipe_id: str, **changes: object) -> Recipe:
         recipe = self.get(recipe_id)
-        allowed = {"title", "ingredients", "steps", "servings", "tags", "notes", "source_link", "nutrition"}
+        allowed = {
+            "title", "ingredients", "steps", "servings", "tags",
+            "notes", "source_link", "nutrition", "diet_labels",
+        }
         unknown = set(changes) - allowed
         if unknown:
             raise ValueError(f"Unsupported recipe fields: {', '.join(sorted(unknown))}")
@@ -132,7 +135,6 @@ class RecipeService:
         recipe.reviews.append(review)
         return review
 
-
     def scale_ingredients(self, recipe_id: str, target_servings: int) -> list[Ingredient]:
         """Return quantities for a serving count without changing the saved recipe."""
         recipe = self.get(recipe_id)
@@ -175,6 +177,6 @@ class RecipeService:
                        if ingredient.name.strip().casefold() not in pantry]
             ranked.append((recipe, score, missing))
         return sorted(ranked, key=lambda row: (-row[1], row[0].title.casefold()))
-    
+
     def add_recipe_from_socials(self, recipe_id: str) -> Recipe:
         return self.set_favorite(recipe_id)
