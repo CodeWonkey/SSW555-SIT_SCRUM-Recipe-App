@@ -5,7 +5,8 @@ from typing import Iterable
 
 # Re-export models to preserve existing service imports.
 from app.models import Ingredient, Nutrition, Recipe, Review
-
+_WORD = re.compile(r"\b\w+\b")
+_FLAGGED_WORDS = frozenset({"stupid", "idiot"})
 
 class RecipeNotFound(KeyError):
     """Raised when a requested recipe ID is not in the service."""
@@ -68,11 +69,16 @@ class RecipeService:
         needle = query.strip().casefold()
         if not needle:
             return self.list_recipes()
-        return [r for r in self._recipes.values()
-                if needle in r.title.casefold()
-                or any(needle in item.name.casefold() for item in r.ingredients)
-                or any(needle in step.casefold() for step in r.steps)
-                or any(needle in tag.casefold() for tag in r.tags)]
+        return [r for r in self._recipes.values() if self._matches(r, needle)]
+
+    @staticmethod
+    def _matches(recipe: Recipe, needle: str) -> bool:
+        return (
+            needle in recipe.title.casefold()
+            or any(needle in item.name.casefold() for item in recipe.ingredients)
+            or any(needle in step.casefold() for step in recipe.steps)
+            or any(needle in tag.casefold() for tag in recipe.tags)
+        )
 
     def filter(self, *, tag: str | None = None, favorites_only: bool = False) -> list[Recipe]:
         return [r for r in self._recipes.values()
@@ -119,10 +125,7 @@ class RecipeService:
         if len(clean_text) > 1000:
             raise ValueError("Review must be 1000 characters or fewer.")
 
-        flagged_words = {"stupid", "idiot"}
-        words = set(re.findall(r"\b\w+\b", clean_text.casefold()))
-
-        if words & flagged_words:
+        if set(_WORD.findall(clean_text.casefold())) & _FLAGGED_WORDS:
             raise ValueError("Review contains flagged language.")
 
         review = Review(
