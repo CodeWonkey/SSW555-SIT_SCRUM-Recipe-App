@@ -5,6 +5,7 @@
   <section class="intro">
     <p class="eyebrow">RECIPE DETAILS</p>
     <h1>{{ recipe.title }}</h1>
+    <p><a class="button" href="{{ url_for('main.share_recipe', recipe_id=recipe.id) }}">Share</a></p>
     {% if unsuitable %}
       <p class="diet-warning">May not be suitable</p>
     {% endif %}

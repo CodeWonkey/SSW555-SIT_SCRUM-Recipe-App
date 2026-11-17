@@ -29,7 +29,7 @@ Use synthetic data and keep each case aligned with that story's acceptance crite
 | US-21 Mark recipes that conflict with saved dietary preferences | Show "May not be suitable" on the recipe list and the recipe page when a saved diet or allergy label is missing. Vegan satisfies vegetarian. A custom allergy requires an "{allergy}-free" label. A user with no saved preferences sees no mark. | Planned |
 | US-22 Edit a Submitted Review | The author can replace the text or rating. Other readers see an edited label. | Planned |
 | US-23 Delete a Review | The author can delete a review after confirmation. Another user has no delete option. | Planned |
-| US-24 Share a recipe | Produce a link for the recipe being viewed. Opening the link shows that recipe. | Planned |
+| US-24 Share a recipe | Select Share on the recipe being viewed. Share its saved cooking details through device sharing, copied text, or a downloadable text file that recipients can read without the local app. Handle unsupported or denied clipboard/sharing access and cancellation; require login and reject missing recipes. | `tests/test_share_recipe_web.py`, `tests/test_recipe_share_ui.cjs` |
 | US-25 Rate a recipe | Save a rating from 1 through 5 and reject a value outside that range. Show the rating on the list and the detail page. | Service tests (`tests/test_recipe_service.py`) |
 | US-26 Remove a category tag from a recipe | Remove only the chosen tag. Keep the other tags and the rest of the recipe. | Planned |
 | US-27 Export saved recipes to PDF | Include the title, ingredients, and instructions. Cover a long recipe and special characters. | Planned |

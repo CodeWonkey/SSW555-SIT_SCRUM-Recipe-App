@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Share {{ recipe.title }} · Recipe Journal{% endblock %}
+{% block content %}
+  <section class="intro">
+    <p class="eyebrow">SHARE A RECIPE</p>
+    <h1>{{ recipe.title }}</h1>
+    <p class="lede" id="share-hint">Send the recipe text to friends or family in a message or as a file. Local app links only work on your computer; recipients do not need this app to read the shared text.</p>
+    <p class="field-hint">Includes the saved recipe's original servings and measurements, plus its source when available. Personal notes, ratings, and reviews are excluded.</p>
+  </section>
+  <section class="recipe-form" aria-label="Recipe sharing options">
+    <div class="form-field">
+      <label for="share-text">Recipe text</label>
+      <textarea id="share-text" rows="16" readonly aria-describedby="share-hint">{{ share_text }}</textarea>
+    </div>
+    <div class="form-actions recipe-share-actions">
+      <button type="button" id="share-native" class="button" data-title="{{ recipe.title }}" hidden>Share with an app</button>
+      <button type="button" id="share-copy" class="button button-outline" hidden>Copy recipe</button>
+      <a class="button button-outline" href="{{ url_for('main.download_shared_recipe', recipe_id=recipe.id) }}">Download recipe (.txt)</a>
+    </div>
+    <p id="share-status" role="status" aria-live="polite"></p>
+    <noscript><p>Select and copy the recipe text above, or download the text file to send.</p></noscript>
+    <p><a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">Back to recipe</a></p>
+  </section>
+  <script src="{{ url_for('static', filename='js/recipe_share.js') }}" defer></script>
+{% endblock %}

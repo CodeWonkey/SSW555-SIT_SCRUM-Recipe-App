@@ -72,6 +72,8 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
 .search-form { max-width: none; display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 20px; }
 .search-form .form-field { flex: 1 1 280px; min-width: 0; }
 .search-form .form-actions { flex-wrap: wrap; }
+.recipe-share-actions { flex-wrap: wrap; }
+.recipe-share-actions [hidden] { display: none; }
 
 
 .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
