@@ -1,10 +1,11 @@
 import uuid
 
-from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, Response, abort, render_template, request, redirect, url_for, flash, session
 from app.services.diet_labels import clean_diet_labels, diet_label_choices, is_unsuitable
 from app.services.measurement_conversion import convert_to_metric
 from app.services.recipe_fetch import fetch_recipe_html
 from app.services.recipe_import import build_recipe_draft, extract_recipe
+from app.services.recipe_share import recipe_share_text
 from app.services.recipes import RecipeNotFound, RecipeService, Recipe
 from app.services.users import UserService
 from app.web.accounts import register_account_routes
@@ -110,6 +111,22 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             measurement_system=measurement_system,
             unsuitable=is_unsuitable(recipe, user),
         ), 400 if error else 200
+
+    @bp.get("/recipes/<recipe_id>/share")
+    def share_recipe(recipe_id: str):
+        recipe = _get_recipe_or_404(recipe_id)
+        return render_template(
+            "share_recipe.html", recipe=recipe, share_text=recipe_share_text(recipe)
+        )
+
+    @bp.get("/recipes/<recipe_id>/share.txt")
+    def download_shared_recipe(recipe_id: str):
+        recipe = _get_recipe_or_404(recipe_id)
+        return Response(
+            recipe_share_text(recipe),
+            mimetype="text/plain",
+            headers={"Content-Disposition": 'attachment; filename="recipe.txt"'},
+        )
 
     def _label_choices(existing=()):
         return diet_label_choices(current_user(), existing)

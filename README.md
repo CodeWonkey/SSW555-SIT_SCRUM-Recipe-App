@@ -57,6 +57,23 @@ notebooks/                 Data model exploration notebook
 - Open a pull request for review; avoid committing directly to the default branch.
 - Keep secrets and real user data out of the repository.
 
+## Sharing a recipe
+
+On a recipe page, select **Share** to preview the saved recipe text. Use
+**Copy recipe** to paste it into a message, **Download recipe (.txt)** to send
+a file, or **Share with an app** when your browser supports device sharing.
+If clipboard access is unavailable, the copy button selects the text for manual
+copying. Download and manual copying also work without JavaScript.
+
+Sharing includes the title, original servings and ingredient amounts, steps,
+and source URL when present. Personal notes, ratings, and reviews are excluded.
+Recipients can read the text without an account or a running app. Local app
+URLs are not shared because they would point to the recipient's own computer.
+The share preview and download keep the app's existing login requirement.
+
+Run the sharing interface checks with `node --test tests/test_recipe_share_ui.cjs`;
+the web checks are included in `python -m pytest`.
+
 ## Current limits
 
 Recipe detail pages show calories (kcal), protein, carbs, and fat (grams) per serving.
