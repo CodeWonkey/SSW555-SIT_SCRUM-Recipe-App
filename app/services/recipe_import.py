@@ -3,6 +3,8 @@ import re
 
 from bs4 import BeautifulSoup
 
+from app.services.ingredient_parser import parse_ingredient
+
 
 def extract_recipe(html: str | bytes) -> dict:
     soup = BeautifulSoup(html, "html.parser")
@@ -85,7 +87,7 @@ def build_recipe_draft(data: dict, source_url: str) -> dict:
         "title": _text(data.get("name")),
         "servings": servings,
         "ingredients": [
-            {"name": text, "quantity": "", "unit": ""}
+            parse_ingredient(text)
             for item in ingredients
             if (text := _text(item))
         ],

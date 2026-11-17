@@ -9,6 +9,7 @@ from typing import Iterable
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.services.meal_plan import add_recipe, empty_plan
+from app.services.pantry import PantryItem, add_item
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LENGTH = 8
@@ -54,6 +55,7 @@ class User:
     meal_plan: dict[str, list[str]] = field(default_factory=empty_plan)
     favorites: list[str] = field(default_factory=list)
     cooking_history: list[CookingEvent] = field(default_factory=list)
+    pantry: list[PantryItem] = field(default_factory=list)
 
 
 
@@ -110,9 +112,7 @@ class UserService:
         An empty selection clears them. Unknown choices are rejected and the
         previously saved set is left unchanged. Allergies are not changed.
         """
-        user = self.get(user_id)
-        if user is None:
-            raise ValueError("Account not found")
+        user = self._require_user(user_id)
 
         user.dietary_restrictions = self._clean_choices(
             restrictions, _ALLOWED_RESTRICTIONS, "dietary restriction"
@@ -132,9 +132,7 @@ class UserService:
         the account unchanged. A typed allergy that matches a checkbox is stored
         as that checkbox instead of a second custom entry.
         """
-        user = self.get(user_id)
-        if user is None:
-            raise ValueError("Account not found")
+        user = self._require_user(user_id)
 
         cleaned_restrictions = self._clean_choices(
             restrictions, _ALLOWED_RESTRICTIONS, "dietary restriction"
@@ -179,16 +177,12 @@ class UserService:
 
     def assign_meal(self, user_id: str, day: str, recipe_id: str) -> User:
         """Assign a saved recipe to one day of this account's weekly plan."""
-        user = self.get(user_id)
-        if user is None:
-            raise ValueError("Account not found")
+        user = self._require_user(user_id)
         user.meal_plan = add_recipe(user.meal_plan, day, recipe_id)
         return user
     
     def save_favorite(self, user_id: str, recipe_id: str) -> User:
-        user = self.get(user_id)
-        if user is None:
-            raise ValueError("Account not found")
+        user = self._require_user(user_id)
         if recipe_id not in user.favorites:
             user.favorites.append(recipe_id)
         return user
@@ -200,9 +194,7 @@ class UserService:
         cooked_at: datetime | None = None,
     ) -> CookingEvent:
         """Record one cooking event for a user."""
-        user = self.get(user_id)
-        if user is None:
-            raise ValueError("Account not found")
+        user = self._require_user(user_id)
 
         if not recipe_id.strip():
             raise ValueError("Recipe ID is required")
@@ -222,15 +214,27 @@ class UserService:
 
     def get_cooking_history(self, user_id: str) -> list[CookingEvent]:
         """Return cooking events in reverse chronological order."""
-        user = self.get(user_id)
-        if user is None:
-            raise ValueError("Account not found")
+        user = self._require_user(user_id)
 
         return sorted(
             user.cooking_history,
             key=lambda event: event.cooked_at,
             reverse=True,
         )
+
+    def add_pantry_item(
+        self, user_id: str, name: str, quantity: float | str, unit: str
+    ) -> PantryItem:
+        """Add an item to a user's pantry, combining matching name/unit entries."""
+        user = self._require_user(user_id)
+
+        return add_item(user.pantry, name, quantity, unit)
+
+    def _require_user(self, user_id: str) -> User:
+        user = self.get(user_id)
+        if user is None:
+            raise ValueError("Account not found")
+        return user
 
     def _store(self, user: User) -> None:
         self._by_email[user.email.casefold()] = user

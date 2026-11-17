@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Pantry · Recipe Journal{% endblock %}
+
+{% block content %}
+  <section class="intro">
+    <p class="eyebrow">INGREDIENT INVENTORY</p>
+    <h1>Pantry</h1>
+    <p>Add what you have on hand, or check an item off your shopping list to add it here automatically.</p>
+  </section>
+
+  <section>
+    <h2>Add an ingredient</h2>
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <form method="POST" class="pantry-form">
+      <p class="form-field">
+        <label for="pantry-name">Ingredient</label>
+        <input id="pantry-name" name="name" required>
+      </p>
+      <p class="form-field">
+        <label for="pantry-quantity">Quantity</label>
+        <input id="pantry-quantity" name="quantity" type="number" min="0.01" step="any" required>
+      </p>
+      <p class="form-field">
+        <label for="pantry-unit">Unit</label>
+        <input id="pantry-unit" name="unit" placeholder="cups" required>
+      </p>
+      <button class="button" type="submit">Add item</button>
+    </form>
+
+    <h2>Your pantry</h2>
+    {% if pantry %}
+      <ul class="pantry-items">
+        {% for item in pantry %}
+          <li>{{ item.quantity }} {{ item.unit }} {{ item.name }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>Your pantry is empty. Add an ingredient above or check off a shopping-list item.</p>
+    {% endif %}
+  </section>
+{% endblock %}
