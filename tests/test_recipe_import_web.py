@@ -59,9 +59,11 @@ class RecipeImportWebTests(unittest.TestCase):
             self.assertEqual(form.find("input", attrs={"name": name})["value"], expected)
         names = form.find_all("input", attrs={"name": "ingredient_name[]"})
         self.assertEqual([item["value"] for item in names],
-                         ["2 slices bread", "1 tablespoon butter"])
+                         ["bread", "butter"])
         quantities = form.find_all("input", attrs={"name": "ingredient_quantity[]"})
-        self.assertEqual([item["value"] for item in quantities], ["", ""])
+        self.assertEqual([item["value"] for item in quantities], ["2", "1"])
+        units = form.find_all("input", attrs={"name": "ingredient_unit[]"})
+        self.assertEqual([item["value"] for item in units], ["slices", "tablespoon"])
         self.assertEqual(form.find("textarea", attrs={"name": "steps"}).text,
                          "Toast the bread.")
         self.assertIn(b"Save recipe", response.data)

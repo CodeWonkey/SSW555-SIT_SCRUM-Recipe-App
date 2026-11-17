@@ -48,8 +48,23 @@
                value="{{ target_servings }}" aria-describedby="servings-hint{% if servings_error %} servings-error{% endif %}"
                {% if servings_error %}aria-invalid="true"{% endif %}>
       </div>
+      <div class="form-field">
+        <label for="units">Measurement Units</label>
+        <select id="units" name="units">
+          <option value="original" {% if measurement_system == 'original' %}selected{% endif %}>
+            Original
+          </option>
+          <option value="metric" {% if measurement_system == 'metric' %}selected{% endif %}>
+            Metric
+          </option>
+        </select>
+      </div>
       <button type="submit" class="button">Update servings</button>
-      <a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">Reset to {{ recipe.servings }}</a>
+      <button type="submit" class="button button-outline">Update measurements</button>
+
+      <a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id, units=measurement_system) }}">
+        Reset to {{ recipe.servings }}
+      </a>
     </form>
     <p class="field-hint" id="servings-hint">Original recipe: {{ recipe.servings }} servings. Changing servings adjusts ingredient amounts without changing your saved recipe.</p>
     {% if servings_error %}
