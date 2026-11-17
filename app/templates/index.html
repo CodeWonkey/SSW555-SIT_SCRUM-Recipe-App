@@ -61,7 +61,7 @@
               {{ recipe.title }}
             </a>
           </h3>
-            <p>{{ recipe.ingredients|length }} ingredients · {{ recipe.servings }} servings</p>
+            <p>{{ recipe.ingredients|length }} ingredients · {{ recipe.servings }} servings{% if recipe.rating is not none %} · Rating: {{ recipe.rating }}/5{% endif %}</p>
             {% if recipe.id in unsuitable_ids %}
               <p class="diet-warning">May not be suitable</p>
             {% endif %}
