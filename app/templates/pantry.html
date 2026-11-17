@@ -35,7 +35,10 @@
         {% endfor %}
       </ul>
     {% else %}
-      <p>Your pantry is empty. Add an ingredient above or check off a shopping-list item.</p>
+      <div class="empty-state">
+        <h3>Your pantry is empty.</h3>
+        <p>Add an ingredient above or check off a shopping-list item.</p>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

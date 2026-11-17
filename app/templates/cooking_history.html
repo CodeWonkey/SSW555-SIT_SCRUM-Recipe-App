@@ -10,24 +10,22 @@
 
   <section>
     {% if history %}
-      <ul>
+      <ul class="history-list">
         {% for entry in history %}
           <li>
             <a href="{{ url_for('main.recipe_detail', recipe_id=entry.recipe.id) }}">
               {{ entry.recipe.title }}
             </a>
-            <span>
-              — Cooked on
-              {{ entry.cooked_at.strftime('%B %d, %Y at %I:%M %p') }} UTC
-            </span>
+            <span>Cooked on {{ entry.cooked_at.strftime('%B %d, %Y at %I:%M %p') }} UTC</span>
           </li>
         {% endfor %}
       </ul>
     {% else %}
-      <p>You haven't marked any recipes as cooked yet.</p>
-      <a href="{{ url_for('main.home') }}" class="button">
-        Browse Recipes
-      </a>
+      <div class="empty-state">
+        <h3>No cooking history yet.</h3>
+        <p>You haven't marked any recipes as cooked yet.</p>
+        <a href="{{ url_for('main.home') }}" class="button">Browse recipes</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

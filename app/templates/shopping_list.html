@@ -23,8 +23,11 @@
         {% endfor %}
       </ul>
     {% else %}
-      <p>Your shopping list is empty.</p>
-      <a href="{{ url_for('main.home') }}">Browse recipes</a>
+      <div class="empty-state">
+        <h3>Your shopping list is empty.</h3>
+        <p>Add ingredients from any recipe to start a list.</p>
+        <a class="button" href="{{ url_for('main.home') }}">Browse recipes</a>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

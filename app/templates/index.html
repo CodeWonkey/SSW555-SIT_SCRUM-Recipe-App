@@ -5,63 +5,48 @@
     <p class="eyebrow">YOUR COOKBOOK</p>
     <h1>Recipes worth keeping.</h1>
     <p class="lede">A shared starting point for collecting recipes, planning meals, and making cooking a little easier.</p>
-    <a class="button" href="#recipe-list">Browse recipes</a>
   </section>
   <section id="recipe-list" class="section-heading">
     <div><p class="eyebrow">RECIPE COLLECTION</p><h2>My recipes</h2></div>
-    <a class="button" href="{{ url_for('main.add_recipe') }}">Add recipe</a>
+    <div class="button-group">
+      <a class="button button-outline" href="{{ url_for('main.import_recipe') }}">Import recipe</a>
+      <a class="button" href="{{ url_for('main.add_recipe') }}">Add recipe</a>
+    </div>
   </section>
-  <nav aria-label="Main navigation">
-    <a href="{{ url_for('main.home') }}">My recipes</a>
-    <a href="#search-recipes">Search recipes</a>
-    <a href="{{ url_for('main.add_recipe') }}">Add recipe</a>
-    <a href="{{ url_for('main.import_recipe') }}">Import recipe</a>
-  </nav>
-  <form id="search-recipes" method="GET" action="{{ url_for('main.home') }}" class="recipe-form search-form" role="search">
+  <form id="search-recipes" method="GET" action="{{ url_for('main.home') }}" class="filter-bar" role="search">
     <div class="form-field">
       <label for="recipe-search">Search by recipe name or ingredient</label>
       <input type="search" id="recipe-search" name="q" value="{{ query }}" placeholder="e.g. pasta or tomatoes">
-      <input type="hidden" name="sort" value="{{ sort }}">
-
     </div>
-    <div class="form-actions">
-      <button type="submit" class="button">Search</button>
-      {% if query %}
-        <a class="button button-outline" href="{{ url_for('main.home') }}">Clear search</a>
-      {% endif %}
-    </div>
-  </form>
-  
-  <form method="GET" action="{{ url_for('main.home') }}" class="recipe-form">
-    <input type="hidden" name="q" value="{{ query }}">
-
     <div class="form-field">
-      <label for="sort">Sort recipes by:</label>
+      <label for="sort">Sort by</label>
       <select name="sort" id="sort">
-        <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest First</option>
+        <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest first</option>
         <option value="az" {% if sort == "az" %}selected{% endif %}>Name: A to Z</option>
         <option value="za" {% if sort == "za" %}selected{% endif %}>Name: Z to A</option>
       </select>
     </div>
-
-    <button type="submit" class="button">Apply Sort</button>
+    <button type="submit" class="button">Apply</button>
+    {% if query %}
+      <a href="{{ url_for('main.home') }}">Clear search</a>
+    {% endif %}
   </form>
 
 {% if query %}
-  <p role="status">{{ recipes|length }} recipe{{ 's' if recipes|length != 1 else '' }} found for “{{ query }}”.</p>
+  <p class="results-summary" role="status">{{ recipes|length }} recipe{{ 's' if recipes|length != 1 else '' }} found for “{{ query }}”.</p>
 {% endif %}
 
   {% if recipes %}
     <div class="recipe-grid">
       {% for recipe in recipes %}
         <article class="recipe-card">
-          <p class="eyebrow">{{ recipe.tags|join(" · ") or "RECIPE" }}</p>
+          <p class="card-label">{{ recipe.tags|join(" · ") or "RECIPE" }}</p>
           <h3>
             <a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">
               {{ recipe.title }}
             </a>
           </h3>
-            <p>{{ recipe.ingredients|length }} ingredients · {{ recipe.servings }} servings</p>
+            <p class="card-meta">{{ recipe.ingredients|length }} ingredients · {{ recipe.servings }} servings</p>
           </article>
         {% endfor %}
     </div>
@@ -72,7 +57,7 @@
       <p>No recipes match “{{ query }}”. Try another recipe name or ingredient.</p>
       {% else %}
       <h3>Your recipe box is ready.</h3>
-      <p>The first story to build is adding a recipe. This page is starter UI for the team to extend.</p>
+      <p>Add a recipe manually or import one from a recipe website.</p>
       {% endif %}
     </div>
   {% endif %}

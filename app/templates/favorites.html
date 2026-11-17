@@ -19,6 +19,7 @@
     <div class="empty-state">
       <h3>No saved recipes yet.</h3>
       <p>Open a recipe and choose Save to Favorites.</p>
+      <a class="button" href="{{ url_for('main.home') }}">Browse recipes</a>
     </div>
   {% endif %}
 {% endblock %}

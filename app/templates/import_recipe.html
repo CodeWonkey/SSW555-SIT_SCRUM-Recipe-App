@@ -7,7 +7,7 @@
     <h2>Import a recipe</h2>
     <a class="button button-outline" href="{{ url_for('main.add_recipe') }}">Add manually</a>
   </section>
-  <p>Paste a recipe page URL to import it, then review and edit the recipe before saving.</p>
+  <p class="page-description">Paste a recipe page URL. You can review every field before saving.</p>
 
   <form method="POST"
         action="{{ url_for('main.import_recipe') }}"
@@ -27,8 +27,6 @@
     <button type="submit" class="button">Import recipe</button>
   </form>
 
-{% if error %}
-  <p role="alert">{{ error }}</p>
-{% endif %}
+  {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
 
 {% endblock %}

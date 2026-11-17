@@ -8,25 +8,28 @@
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="{{ url_for('main.home') }}">Recipe Journal</a>
-    <nav aria-label="Main navigation">
-      <a href="{{ url_for('main.home') }}">My recipes</a>
-      <a href="{{ url_for('main.shopping_list') }}">Shopping List</a>
-      <a href="{{ url_for('main.pantry') }}">Pantry</a>
-      <a href="{{ url_for('main.favorites') }}">Saved</a>
-      <a href="{{ url_for('main.meal_plan') }}">Meal plan</a>
-      <a href="{{ url_for('main.cooking_history') }}">Cooking History</a>
-      {% if session.get("user_name") %}
-        <a href="{{ url_for('main.profile') }}">Profile</a>
-        <span class="signed-in">{{ session.user_name }}</span>
-        <form method="POST" action="{{ url_for('main.logout') }}" class="logout-form">
-          <button type="submit" class="button button-outline">Log out</button>
-        </form>
-      {% else %}
-        <a href="{{ url_for('main.login') }}">Log in</a>
-        <a href="{{ url_for('main.register') }}">Create account</a>
-      {% endif %}
-    </nav>
+    <div class="header-inner">
+      <a class="brand" href="{{ url_for('main.home') }}">Recipe Journal</a>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="{{ url_for('main.home') }}"{% if request.endpoint == 'main.home' %} aria-current="page"{% endif %}>Recipes</a>
+        <a href="{{ url_for('main.shopping_list') }}"{% if request.endpoint == 'main.shopping_list' %} aria-current="page"{% endif %}>Shopping</a>
+        <a href="{{ url_for('main.pantry') }}"{% if request.endpoint == 'main.pantry' %} aria-current="page"{% endif %}>Pantry</a>
+        <a href="{{ url_for('main.favorites') }}"{% if request.endpoint == 'main.favorites' %} aria-current="page"{% endif %}>Saved</a>
+        <a href="{{ url_for('main.meal_plan') }}"{% if request.endpoint == 'main.meal_plan' %} aria-current="page"{% endif %}>Meal plan</a>
+        <a href="{{ url_for('main.cooking_history') }}"{% if request.endpoint == 'main.cooking_history' %} aria-current="page"{% endif %}>History</a>
+      </nav>
+      <div class="account-nav">
+        {% if session.get("user_name") %}
+          <a href="{{ url_for('main.profile') }}"{% if request.endpoint == 'main.profile' %} aria-current="page"{% endif %}>{{ session.user_name }}</a>
+          <form method="POST" action="{{ url_for('main.logout') }}" class="logout-form">
+            <button type="submit" class="text-button">Log out</button>
+          </form>
+        {% else %}
+          <a href="{{ url_for('main.login') }}">Log in</a>
+          <a class="button button-small" href="{{ url_for('main.register') }}">Create account</a>
+        {% endif %}
+      </div>
+    </div>
   </header>
   <main class="page-shell">
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -36,6 +39,6 @@
     {% endwith %}
     {% block content %}{% endblock %}
   </main>
-  <footer class="site-footer">CS555 team starter · Sample content only</footer>
+  <footer class="site-footer">Recipe Journal</footer>
 </body>
 </html>
