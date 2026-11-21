@@ -112,7 +112,29 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             servings_error=error,
             measurement_system=measurement_system,
             unsuitable=is_unsuitable(recipe, user),
+            personal_note=user.personal_notes.get(recipe_id, "") if user else "",
         ), 400 if error else 200
+
+    @bp.post("/recipes/<recipe_id>/personal-note")
+    def save_personal_note(recipe_id: str):
+        _get_recipe_or_404(recipe_id)
+
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+
+        try:
+            users.save_personal_note(
+                user.id,
+                recipe_id,
+                request.form.get("personal_note", ""),
+            )
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
+
+        flash("Personal note saved.", "success")
+        return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
 
     @bp.get("/recipes/<recipe_id>/export.pdf")
     def export_recipe_pdf(recipe_id: str):
