@@ -56,6 +56,7 @@ class User:
     favorites: list[str] = field(default_factory=list)
     cooking_history: list[CookingEvent] = field(default_factory=list)
     pantry: list[PantryItem] = field(default_factory=list)
+    personal_notes: dict[str, str] = field(default_factory=dict)
 
 
 
@@ -185,6 +186,30 @@ class UserService:
         user = self._require_user(user_id)
         if recipe_id not in user.favorites:
             user.favorites.append(recipe_id)
+        return user
+
+    def save_personal_note(
+        self,
+        user_id: str,
+        recipe_id: str,
+        note: str,
+    ) -> User:
+        """Save or update a personal note for a user's saved recipe."""
+        user = self._require_user(user_id)
+
+        if recipe_id not in user.favorites:
+            raise ValueError("Recipe must be saved before adding a personal note")
+
+        cleaned_note = note.strip()
+
+        if len(cleaned_note) > 2000:
+            raise ValueError("Personal note must be 2000 characters or fewer")
+
+        if cleaned_note:
+            user.personal_notes[recipe_id] = cleaned_note
+        else:
+            user.personal_notes.pop(recipe_id, None)
+
         return user
 
     def mark_recipe_cooked(
