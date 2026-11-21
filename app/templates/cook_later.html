@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Cook Later · Recipe Journal{% endblock %}
+{% block content %}
+  <section class="intro">
+    <p class="eyebrow">YOUR COOK-LATER LIST</p>
+    <h1>Cook Later</h1>
+  </section>
+
+  {% if recipes %}
+    <div class="recipe-grid">
+      {% for recipe in recipes %}
+        <article class="recipe-card">
+          <h3><a href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">{{ recipe.title }}</a></h3>
+          <p>{{ recipe.ingredients|length }} ingredients · {{ recipe.servings }} servings</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>No recipes saved for later yet.</h3>
+      <p>Open a recipe and choose Cook Later to add it to your list.</p>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -117,6 +117,14 @@
     </form>
   {% endif %}
 
+  {% if is_cook_later %}
+    <button type="button" class="button button-outline" disabled>Added to Cook Later</button>
+  {% else %}
+    <form method="POST" action="{{ url_for('main.save_cook_later', recipe_id=recipe.id) }}">
+      <button type="submit" class="button button-outline">Cook Later</button>
+    </form>
+  {% endif %}
+
   <section>
     <h2>Steps</h2>
     <ol>

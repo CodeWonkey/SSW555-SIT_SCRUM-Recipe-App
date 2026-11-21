@@ -107,6 +107,7 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             "recipe_detail.html",
             recipe=recipe,
             is_saved=user is not None and recipe_id in user.favorites,
+            is_cook_later=user is not None and recipe_id in user.cook_later,
             ingredients=ingredients,
             target_servings=target_servings,
             servings_error=error,

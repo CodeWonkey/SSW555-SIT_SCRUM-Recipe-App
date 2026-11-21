@@ -128,3 +128,34 @@ def register_planning_routes(bp, service, users, current_user):
             except RecipeNotFound:
                 continue
         return render_template("favorites.html", recipes=recipes)
+
+    @bp.post("/recipes/<recipe_id>/cook-later")
+    def save_cook_later(recipe_id: str):
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+
+        try:
+            service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+
+        users.save_cook_later(user.id, recipe_id)
+        flash("Recipe added to your cook-later list.", "success")
+
+        return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
+
+    @bp.get("/cook-later")
+    def cook_later():
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+
+        recipes = []
+        for recipe_id in user.cook_later:
+            try:
+                recipes.append(service.get(recipe_id))
+            except RecipeNotFound:
+                continue
+
+        return render_template("cook_later.html", recipes=recipes)
