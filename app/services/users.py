@@ -54,6 +54,7 @@ class User:
     other_allergies: set[str] = field(default_factory=set)
     meal_plan: dict[str, list[str]] = field(default_factory=empty_plan)
     favorites: list[str] = field(default_factory=list)
+    cook_later: list[str] = field(default_factory=list)
     cooking_history: list[CookingEvent] = field(default_factory=list)
     pantry: list[PantryItem] = field(default_factory=list)
 
@@ -185,6 +186,15 @@ class UserService:
         user = self._require_user(user_id)
         if recipe_id not in user.favorites:
             user.favorites.append(recipe_id)
+        return user
+
+    def save_cook_later(self, user_id: str, recipe_id: str) -> User:
+        """Add a recipe to this user's personal cook-later list."""
+        user = self._require_user(user_id)
+
+        if recipe_id not in user.cook_later:
+            user.cook_later.append(recipe_id)
+
         return user
 
     def mark_recipe_cooked(
