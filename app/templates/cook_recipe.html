@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Cook {{ recipe.title }} · Recipe Journal{% endblock %}
+{% block content %}
+  <section class="intro cook-intro">
+    <p class="eyebrow">HANDS-FREE COOKING</p>
+    <h1>{{ recipe.title }}</h1>
+    <p>Say <strong>next step</strong> or <strong>previous step</strong> after enabling the microphone, or use the buttons.</p>
+    <a class="button button-outline" href="{{ url_for('main.recipe_detail', recipe_id=recipe.id) }}">Back to recipe</a>
+  </section>
+  <section id="cook-mode" class="cook-mode" aria-label="Cooking instructions">
+    {% if recipe.steps %}
+      <p id="cook-counter" aria-live="polite">Step 1 of {{ recipe.steps|length }}</p>
+      <ol id="cook-steps" class="cook-steps">
+        {% for step in recipe.steps %}
+          <li data-cook-step{% if not loop.first %} hidden{% endif %}>{{ step }}</li>
+        {% endfor %}
+      </ol>
+      <div class="cook-controls">
+        <button class="button button-outline" id="cook-previous" type="button" disabled>Previous step</button>
+        <button class="button" id="cook-next" type="button"{% if recipe.steps|length == 1 %} disabled{% endif %}>Next step</button>
+      </div>
+      <div class="cook-controls">
+        <button class="button" id="cook-listen" type="button">Enable voice commands</button>
+        <button class="button button-outline" id="cook-stop" type="button" disabled>Stop listening</button>
+      </div>
+      <p id="cook-status" role="status" aria-live="polite">Microphone off. You can always use the buttons.</p>
+    {% else %}
+      <p>This recipe does not have any cooking steps yet.</p>
+    {% endif %}
+  </section>
+  <script src="{{ url_for('static', filename='js/cook_mode.js') }}" defer></script>
+{% endblock %}

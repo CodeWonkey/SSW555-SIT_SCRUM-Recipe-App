@@ -95,6 +95,16 @@ def create_blueprint(service: RecipeService, users: UserService) -> Blueprint:
             return recipe.servings, recipe.ingredients, "original", str(exc)
         return target, ingredients, system, None
 
+    @bp.get("/recipes/<recipe_id>/cook")
+    def cook_recipe(recipe_id: str):
+        recipe = _get_recipe_or_404(recipe_id)
+        return render_template("cook_recipe.html", recipe=recipe)
+
+    @bp.get("/recipes/<recipe_id>/cook")
+    def cook_recipe(recipe_id: str):
+        recipe = _get_recipe_or_404(recipe_id)
+        return render_template("cook_recipe.html", recipe=recipe)
+
     @bp.get("/recipes/<recipe_id>")
     def recipe_detail(recipe_id: str):
         recipe = _get_recipe_or_404(recipe_id)
