@@ -16,6 +16,7 @@
       <a href="{{ url_for('main.favorites') }}">Saved</a>
       <a href="{{ url_for('main.meal_plan') }}">Meal plan</a>
       <a href="{{ url_for('main.cooking_history') }}">Cooking History</a>
+      <a href="{{ url_for('main.leftovers') }}">Leftovers</a>
       {% if session.get("user_name") %}
         <a href="{{ url_for('main.profile') }}">Profile</a>
         <span class="signed-in">{{ session.user_name }}</span>

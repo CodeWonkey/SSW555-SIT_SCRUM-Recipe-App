@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from dataclasses import dataclass, field
 from typing import Iterable
 
@@ -43,6 +43,15 @@ class CookingEvent:
     cooked_at: datetime
 
 
+@dataclass(frozen=True)
+class Leftover:
+    """Leftover portions saved for one recipe on a particular day."""
+
+    recipe_id: str
+    portions: int
+    stored_on: date
+
+
 @dataclass
 class User:
     id: str
@@ -55,6 +64,7 @@ class User:
     meal_plan: dict[str, list[str]] = field(default_factory=empty_plan)
     favorites: list[str] = field(default_factory=list)
     cooking_history: list[CookingEvent] = field(default_factory=list)
+    leftovers: list[Leftover] = field(default_factory=list)
     pantry: list[PantryItem] = field(default_factory=list)
 
 
@@ -221,6 +231,25 @@ class UserService:
             key=lambda event: event.cooked_at,
             reverse=True,
         )
+
+    def save_leftovers(self, user_id: str, recipe_id: str,
+                       portions: int, stored_on: date) -> Leftover:
+        """Save leftovers only to the signed-in user's account."""
+        user = self._require_user(user_id)
+        if not recipe_id or not recipe_id.strip():
+            raise ValueError("Recipe ID is required")
+        if type(portions) is not int or portions < 1:
+            raise ValueError("Portions must be a whole number greater than zero")
+        if type(stored_on) is not date:
+            raise ValueError("Enter a valid storage date")
+        entry = Leftover(recipe_id, portions, stored_on)
+        user.leftovers.append(entry)
+        return entry
+
+    def get_leftovers(self, user_id: str) -> list[Leftover]:
+        """Newest storage dates first, without changing saved entry order."""
+        return sorted(self._require_user(user_id).leftovers,
+                      key=lambda entry: entry.stored_on, reverse=True)
 
     def add_pantry_item(
         self, user_id: str, name: str, quantity: float | str, unit: str

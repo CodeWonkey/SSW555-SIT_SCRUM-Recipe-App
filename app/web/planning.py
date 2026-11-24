@@ -1,4 +1,5 @@
-"""Meal planning, cooking history, and saved recipe routes."""
+"""Meal planning, cooking history, leftovers, and saved recipe routes."""
+from datetime import date
 from flask import abort, render_template, request, redirect, url_for, flash
 
 from app.services.meal_plan import DAYS
@@ -102,6 +103,51 @@ def register_planning_routes(bp, service, users, current_user):
             "cooking_history.html",
             history=history,
         )
+
+    @bp.post("/recipes/<recipe_id>/leftovers")
+    def save_leftovers(recipe_id: str):
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+        try:
+            service.get(recipe_id)
+        except RecipeNotFound:
+            abort(404)
+
+        try:
+            portions = int(request.form.get("portions", ""))
+        except (TypeError, ValueError):
+            flash("Portions must be a whole number greater than zero", "danger")
+            return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
+        try:
+            stored_on = date.fromisoformat(request.form.get("stored_on", ""))
+        except (TypeError, ValueError):
+            flash("Enter a valid storage date", "danger")
+            return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
+
+        try:
+            users.save_leftovers(user.id, recipe_id, portions, stored_on)
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return redirect(url_for("main.recipe_detail", recipe_id=recipe_id))
+
+        flash("Leftover portions saved.", "success")
+        return redirect(url_for("main.leftovers"))
+
+    @bp.get("/leftovers")
+    def leftovers():
+        user = current_user()
+        if user is None:
+            return redirect(url_for("main.login"))
+        entries = []
+        for leftover in users.get_leftovers(user.id):
+            try:
+                recipe = service.get(leftover.recipe_id)
+            except RecipeNotFound:
+                continue
+            entries.append({"recipe": recipe, "portions": leftover.portions,
+                            "stored_on": leftover.stored_on})
+        return render_template("leftovers.html", leftovers=entries)
 
     @bp.post("/recipes/<recipe_id>/favorite")
     def save_favorite(recipe_id: str):

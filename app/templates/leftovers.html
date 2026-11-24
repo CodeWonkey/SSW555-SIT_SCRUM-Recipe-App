@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Leftovers · Recipe Journal{% endblock %}
+{% block content %}
+  <section class="intro">
+    <p class="eyebrow">STORED MEALS</p>
+    <h1>My Leftovers</h1>
+    <p>Saved portions and storage dates for your recipes.</p>
+  </section>
+  <section>
+    {% if leftovers %}
+      <ul class="leftover-list">
+        {% for item in leftovers %}
+          <li>
+            <a href="{{ url_for('main.recipe_detail', recipe_id=item.recipe.id) }}">{{ item.recipe.title }}</a>
+            — {{ item.portions }} portion{{ '' if item.portions == 1 else 's' }}
+            — stored on {{ item.stored_on.strftime('%B %d, %Y') }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>You haven't saved any leftovers yet.</p>
+      <a class="button" href="{{ url_for('main.home') }}">Browse recipes</a>
+    {% endif %}
+  </section>
+{% endblock %}

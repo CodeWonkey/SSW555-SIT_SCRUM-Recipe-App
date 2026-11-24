@@ -94,6 +94,23 @@
     </button>
   </form>
 
+  <section class="leftovers-panel">
+    <h2>Track leftovers</h2>
+    <p class="field-hint">Record how many portions remain and when they were stored.</p>
+    <form method="POST" action="{{ url_for('main.save_leftovers', recipe_id=recipe.id) }}" class="recipe-form">
+      <div class="form-field">
+        <label for="leftover-portions">Leftover portions</label>
+        <input id="leftover-portions" name="portions" type="number" min="1" step="1" required>
+      </div>
+      <div class="form-field">
+        <label for="leftover-date">Date stored</label>
+        <input id="leftover-date" name="stored_on" type="date" required>
+      </div>
+      <button class="button" type="submit">Save leftovers</button>
+      <a href="{{ url_for('main.leftovers') }}">View leftovers</a>
+    </form>
+  </section>
+
   <form method="POST" action="{{ url_for('main.rate_recipe', recipe_id=recipe.id) }}" class="recipe-form">
     <div class="form-field">
       <label for="recipe-stars">Your rating</label>
