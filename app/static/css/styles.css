@@ -105,6 +105,13 @@ h3 { font-family: Georgia, serif; font-size: 1.3rem; }
 .pantry-items { max-width: 680px; display: grid; gap: 8px; padding: 0; list-style: none; }
 .pantry-items li { padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 
+/* US-37: readable step-by-step cooking, including narrow screens. */
+.cook-intro { padding-bottom: 24px; }
+.cook-mode { max-width: 760px; padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.cook-steps { margin: 18px 0 26px; padding-left: 32px; font-size: clamp(1.3rem, 3vw, 1.9rem); line-height: 1.55; }
+.cook-steps [hidden] { display: none; }
+.cook-controls { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0; }
+.cook-controls button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 600px) {
   .section-heading { align-items: start; flex-direction: column; }
   .intro { padding-top: 58px; }

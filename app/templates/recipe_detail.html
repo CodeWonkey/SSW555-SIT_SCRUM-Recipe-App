@@ -119,6 +119,8 @@
 
   <section>
     <h2>Steps</h2>
+    <p><a class="button button-outline" href="{{ url_for('main.cook_recipe', recipe_id=recipe.id) }}">Start hands-free cooking</a></p>
+    <p><a class="button button-outline" href="{{ url_for('main.cook_recipe', recipe_id=recipe.id) }}">Start hands-free cooking</a></p>
     <ol>
       {% for step in recipe.steps %}
         <li>{{ step }}</li>
