@@ -117,6 +117,34 @@
     </form>
   {% endif %}
 
+  {% if is_saved %}
+  <section>
+    <h2>Personal Notes</h2>
+    <p class="field-hint">
+      Save your own cooking tips or changes for this recipe.
+    </p>
+
+    <form method="POST"
+          action="{{ url_for('main.save_personal_note', recipe_id=recipe.id) }}"
+          class="recipe-form">
+      <div class="form-field">
+        <label for="personal-note">Your Note</label>
+        <textarea
+          id="personal-note"
+          name="personal_note"
+          rows="4"
+          maxlength="2000"
+          placeholder="Add your personal cooking notes here..."
+        >{{ personal_note }}</textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="button">Save Note</button>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+
   <section>
     <h2>Steps</h2>
     <ol>
